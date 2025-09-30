@@ -28,6 +28,8 @@ export interface SelectedTile {
 }
 
 export interface TConfig {
+  x: number;
+  y: number;
   columns: number;
   rows: number;
   tile: { width: number; height: number; data: Tile[][] };
