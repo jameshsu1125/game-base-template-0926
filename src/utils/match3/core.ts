@@ -1,6 +1,10 @@
 // fetch code from https://github.com/rembound/Match-3-Game-HTML5/tree/master
 import Match3Manager from "src/managers/match3/manager";
 import {
+  MATCH3_CONFIG,
+  MATCH3_RGB_COLORS,
+} from "../../configs/match3/layout.constants";
+import {
   Cluster,
   GameState,
   MouseTileResult,
@@ -23,11 +27,11 @@ export default class Match3Core {
   private config: TConfig = {
     x: 0,
     y: 0,
-    columns: 8,
-    rows: 8,
+    columns: MATCH3_CONFIG.cols,
+    rows: MATCH3_CONFIG.rows,
     tile: {
-      width: 40,
-      height: 40,
+      width: MATCH3_CONFIG.width,
+      height: MATCH3_CONFIG.height,
       data: [],
     },
     selected: { selected: false, column: 0, row: 0 },
@@ -48,15 +52,7 @@ export default class Match3Core {
   };
 
   // Tile colors in RGB
-  private readonly tileColors: number[][] = [
-    [255, 128, 128],
-    [128, 255, 128],
-    [128, 128, 255],
-    [255, 255, 128],
-    [255, 128, 255],
-    [128, 255, 255],
-    [255, 255, 255],
-  ];
+  private readonly tileColors: number[][] = MATCH3_RGB_COLORS;
 
   // Game data
   private clusters: Cluster[] = [];
@@ -94,8 +90,7 @@ export default class Match3Core {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer) {
-    const { downX, downY } = pointer;
-    const pos = { x: downX, y: downY };
+    const pos = this.getPointerPos(pointer);
 
     if (!this.state.isDrag) {
       const mt = this.getMouseTile(pos);
@@ -142,7 +137,7 @@ export default class Match3Core {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    const pos = { x: pointer.x, y: pointer.y };
+    const pos = this.getPointerPos(pointer);
 
     if (this.state.isDrag && this.config.selected.selected) {
       const mt = this.getMouseTile(pos);
@@ -168,6 +163,13 @@ export default class Match3Core {
 
   private onPointerUp(): void {
     this.state.isDrag = false;
+  }
+
+  private getPointerPos(e: Phaser.Input.Pointer): Position {
+    return {
+      x: e.x - MATCH3_CONFIG.x,
+      y: e.y - MATCH3_CONFIG.y,
+    };
   }
 
   private init(): void {
@@ -312,10 +314,10 @@ export default class Match3Core {
     const levelHeight = this.config.rows * this.config.tile.height;
     this.context.fillStyle = "#000000";
     this.context.fillRect(
-      this.config.x - 4,
-      this.config.y - 4,
-      levelWidth + 8,
-      levelHeight + 8
+      this.config.x,
+      this.config.y,
+      levelWidth,
+      levelHeight
     );
 
     this.renderTiles();
@@ -462,8 +464,8 @@ export default class Match3Core {
     columnOffset: number,
     rowOffset: number
   ): TileCoordinate {
-    const x = this.config.x + (column + columnOffset) * this.config.tile.width;
-    const y = this.config.y + (row + rowOffset) * this.config.tile.height;
+    const x = 0 + (column + columnOffset) * this.config.tile.width;
+    const y = 0 + (row + rowOffset) * this.config.tile.height;
     return { x, y };
   }
 
@@ -475,14 +477,14 @@ export default class Match3Core {
     b: number,
     name: string
   ): void {
-    this.manager.drawTile(x, y, r, g, b, name);
+    this.manager.drawTile({ x, y, r, g, b, name });
 
     this.context.fillStyle = `rgb(${r},${g},${b})`;
     this.context.fillRect(
-      x + 2,
-      y + 2,
-      this.config.tile.width - 4,
-      this.config.tile.height - 4
+      x,
+      y,
+      this.config.tile.width,
+      this.config.tile.height
     );
   }
 
@@ -494,16 +496,16 @@ export default class Match3Core {
         this.context.fillStyle = "#00ff00";
         this.context.fillRect(
           coord.x + this.config.tile.width / 2,
-          coord.y + this.config.tile.height / 2 - 4,
+          coord.y + this.config.tile.height / 2,
           (cluster.length - 1) * this.config.tile.width,
-          8
+          0
         );
       } else {
         this.context.fillStyle = "#0000ff";
         this.context.fillRect(
-          coord.x + this.config.tile.width / 2 - 4,
+          coord.x + this.config.tile.width / 2,
           coord.y + this.config.tile.height / 2,
-          8,
+          0,
           (cluster.length - 1) * this.config.tile.height
         );
       }

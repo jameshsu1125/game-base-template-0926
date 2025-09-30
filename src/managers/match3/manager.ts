@@ -1,3 +1,5 @@
+import { MATCH3_CONFIG } from "../../configs/match3/layout.constants";
+
 type TTileData = {
   [key: string]: {
     x: number;
@@ -7,6 +9,15 @@ type TTileData = {
     b: number;
     graphics: Phaser.GameObjects.Graphics;
   };
+};
+
+type TDrawTileProps = {
+  x: number;
+  y: number;
+  r: number;
+  g: number;
+  b: number;
+  name: string;
 };
 
 export default class Match3Manager {
@@ -32,33 +43,35 @@ export default class Match3Manager {
     });
   }
 
-  public drawTile(
-    x: number,
-    y: number,
-    r: number,
-    g: number,
-    b: number,
-    name: string
-  ) {
+  public drawTile(props: TDrawTileProps) {
+    const { x, y, r, g, b, name } = props;
+
+    const draw = (graphics: Phaser.GameObjects.Graphics) => {
+      this.state[name].graphics.clear();
+      graphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      graphics.fillRect(
+        MATCH3_CONFIG.x + x,
+        MATCH3_CONFIG.y + y,
+        MATCH3_CONFIG.width,
+        MATCH3_CONFIG.height
+      );
+    };
+
     if (this.state[name]) {
       // 已經畫過了
-      this.state[name].graphics.x = 100 + x + 2;
-      this.state[name].graphics.y = 100 + y + 2;
+      this.state[name].graphics.x =
+        (MATCH3_CONFIG.x + x) * this.scene.scale.displayScale.x;
+      this.state[name].graphics.y =
+        (MATCH3_CONFIG.y + y) * this.scene.scale.displayScale.y;
       this.state[name].r = r;
       this.state[name].g = g;
       this.state[name].b = b;
-      this.state[name].graphics.clear();
-      this.state[name].graphics.fillStyle(
-        Phaser.Display.Color.GetColor(r, g, b),
-        1
-      );
-      this.state[name].graphics.fillRect(0, 0, 36, 36);
+      draw(this.state[name].graphics);
     } else {
       // 繪製新的方塊
       const graphics = this.scene.add.graphics();
-      graphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
-      graphics.fillRect(100 + x + 2, 100 + y + 2, 36, 36);
       this.state = { ...this.state, [name]: { x, y, r, g, b, graphics } };
+      draw(graphics);
     }
     this.state[name].graphics.setVisible(true);
   }
