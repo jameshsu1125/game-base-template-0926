@@ -584,10 +584,11 @@ export default class Match3Core {
   private findClusters(): void {
     this.clusters = [];
 
-    // Find 2x2 clusters
-    this.find2x2Clusters();
     // Find L-shaped clusters
     this.findLShapedClusters();
+
+    // Find 2x2 clusters
+    this.find2x2Clusters();
 
     this.findHorizontalClusters();
     this.findVerticalClusters();
@@ -821,14 +822,41 @@ export default class Match3Core {
     for (let i = 0; i < this.clusters.length; i++) {
       const cluster = this.clusters[i];
 
-      console.log(cluster.length);
-
       if (cluster.is2x2) {
         // 處理 2x2 群集：四個位置
         func(i, cluster.column, cluster.row, cluster); // 左上
         func(i, cluster.column + 1, cluster.row, cluster); // 右上
         func(i, cluster.column, cluster.row + 1, cluster); // 左下
         func(i, cluster.column + 1, cluster.row + 1, cluster); // 右下
+        // TODO: 剩下的
+        this.config.tile.data[cluster.column][cluster.row + 1].type = 0; // 測試用
+      } else if (cluster.isLShape) {
+        // 處理 L 形群集
+        if (cluster.shape === "L-down-right") {
+          func(i, cluster.column, cluster.row, cluster);
+          func(i, cluster.column, cluster.row + 1, cluster);
+          func(i, cluster.column, cluster.row + 2, cluster);
+          func(i, cluster.column + 1, cluster.row + 1, cluster);
+          func(i, cluster.column + 1, cluster.row + 2, cluster);
+        } else if (cluster.shape === "L-right-down") {
+          func(i, cluster.column, cluster.row, cluster);
+          func(i, cluster.column + 1, cluster.row, cluster);
+          func(i, cluster.column + 2, cluster.row, cluster);
+          func(i, cluster.column + 1, cluster.row + 1, cluster);
+          func(i, cluster.column + 2, cluster.row + 1, cluster);
+        } else if (cluster.shape === "L-down-left") {
+          func(i, cluster.column + 1, cluster.row, cluster);
+          func(i, cluster.column + 1, cluster.row + 1, cluster);
+          func(i, cluster.column + 1, cluster.row + 2, cluster);
+          func(i, cluster.column, cluster.row + 1, cluster);
+          func(i, cluster.column, cluster.row + 2, cluster);
+        } else if (cluster.shape === "L-right-up") {
+          func(i, cluster.column, cluster.row + 1, cluster);
+          func(i, cluster.column + 1, cluster.row + 1, cluster);
+          func(i, cluster.column + 2, cluster.row + 1, cluster);
+          func(i, cluster.column + 1, cluster.row, cluster);
+          func(i, cluster.column + 2, cluster.row, cluster);
+        }
       } else {
         // 處理線性群集（水平或垂直）
         let colOffset = 0;
