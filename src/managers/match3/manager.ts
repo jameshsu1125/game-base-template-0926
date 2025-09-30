@@ -44,7 +44,7 @@ export default class Match3Manager {
   }
 
   public addScore(count: number) {
-    console.log("Add Score", count);
+    // console.log("Add Score", count);
   }
 
   public drawTile(props: TDrawTileProps) {

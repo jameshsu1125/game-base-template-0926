@@ -3,6 +3,8 @@ import Match3Manager from "src/managers/match3/manager";
 import {
   MATCH3_CONFIG,
   MATCH3_RGB_COLORS,
+  MATCH3_SELECTION_COLOR,
+  MATCH3_SPECIAL_RGB_COLORS,
 } from "../../configs/match3/layout.constants";
 import {
   Cluster,
@@ -336,18 +338,13 @@ export default class Match3Core {
 
     for (let i = 0; i < this.config.columns; i++) {
       for (let j = 0; j < this.config.rows; j++) {
-        const name = this.config.tile.data[i][j].name;
+        const { name, shift, type } = this.config.tile.data[i][j];
+        const { time, total } = this.state.animation;
 
-        const shift = this.config.tile.data[i][j].shift;
-        const coord = this.getTileCoordinate(
-          i,
-          j,
-          0,
-          (this.state.animation.time / this.state.animation.total) * shift
-        );
+        const coord = this.getTileCoordinate(i, j, 0, (time / total) * shift);
 
-        if (this.config.tile.data[i][j].type >= 0) {
-          const col = this.tileColors[this.config.tile.data[i][j].type];
+        if (type >= 0) {
+          const col = this.getColorByType(type);
           this.drawTile(coord.x, coord.y, col[0], col[1], col[2], name);
         }
 
@@ -356,8 +353,8 @@ export default class Match3Core {
             this.config.selected.column === i &&
             this.config.selected.row === j
           ) {
-            // TODO: Draw selection
-            this.drawTile(coord.x, coord.y, 255, 0, 0, name);
+            const [r, g, b] = MATCH3_SELECTION_COLOR;
+            this.drawTile(coord.x, coord.y, r, g, b, name);
           }
         }
       }
@@ -383,11 +380,11 @@ export default class Match3Core {
         (this.state.animation.time / this.state.animation.total) * shiftX,
         (this.state.animation.time / this.state.animation.total) * shiftY
       );
-      const col1 =
-        this.tileColors[
-          this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
-            .type
-        ];
+
+      const col1 = this.getColorByType(
+        this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
+          .type
+      );
 
       const coord2 = this.getTileCoordinate(
         this.currentMove.column2,
@@ -401,11 +398,10 @@ export default class Match3Core {
         (this.state.animation.time / this.state.animation.total) * -shiftX,
         (this.state.animation.time / this.state.animation.total) * -shiftY
       );
-      const col2 =
-        this.tileColors[
-          this.config.tile.data[this.currentMove.column2][this.currentMove.row2]
-            .type
-        ];
+      const col2 = this.getColorByType(
+        this.config.tile.data[this.currentMove.column2][this.currentMove.row2]
+          .type
+      );
 
       const name1 =
         this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
@@ -465,6 +461,15 @@ export default class Match3Core {
     const x = 0 + (column + columnOffset) * this.config.tile.width;
     const y = 0 + (row + rowOffset) * this.config.tile.height;
     return { x, y };
+  }
+
+  private getColorByType(type: number): [number, number, number] {
+    if (type > MATCH3_RGB_COLORS.length) {
+      return MATCH3_SPECIAL_RGB_COLORS[
+        (type - MATCH3_RGB_COLORS.length) % MATCH3_SPECIAL_RGB_COLORS.length
+      ];
+    }
+    return MATCH3_RGB_COLORS[type];
   }
 
   private drawTile(
@@ -787,6 +792,18 @@ export default class Match3Core {
   private findMoves(): void {
     this.moves = [];
 
+    // check special clusters first
+    for (let j = 0; j < this.config.rows; j++) {
+      for (let i = 0; i < this.config.columns - 1; i++) {
+        if (this.config.tile.data[i][j].type > MATCH3_RGB_COLORS.length) {
+          // TODO: special tile swap logic
+          const specialTileType = this.config.tile.data[i][j].type;
+          console.log(specialTileType);
+          //  this.moves.push({ column1: i, row1: j, column2: i, row2: j });
+        }
+      }
+    }
+
     // Check horizontal swaps
     for (let j = 0; j < this.config.rows; j++) {
       for (let i = 0; i < this.config.columns - 1; i++) {
@@ -829,34 +846,51 @@ export default class Match3Core {
         func(i, cluster.column, cluster.row + 1, cluster); // 左下
         func(i, cluster.column + 1, cluster.row + 1, cluster); // 右下
         // TODO: 剩下的
-        this.config.tile.data[cluster.column][cluster.row + 1].type = 0; // 測試用
+        this.config.tile.data[cluster.column][cluster.row + 1].type =
+          MATCH3_RGB_COLORS.length + 1; // 測試用
+        console.log("2x2");
       } else if (cluster.isLShape) {
         // 處理 L 形群集
         if (cluster.shape === "L-down-right") {
           func(i, cluster.column, cluster.row, cluster);
           func(i, cluster.column, cluster.row + 1, cluster);
-          func(i, cluster.column, cluster.row + 2, cluster);
+          func(i, cluster.column, cluster.row + 2, cluster); // 中間
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 2, cluster);
+          // TODO: 剩下的
+          this.config.tile.data[cluster.column][cluster.row + 2].type =
+            MATCH3_RGB_COLORS.length + 2; // 測試用
         } else if (cluster.shape === "L-right-down") {
           func(i, cluster.column, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row, cluster);
-          func(i, cluster.column + 2, cluster.row, cluster);
+          func(i, cluster.column + 2, cluster.row, cluster); // 中間
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 2, cluster.row + 1, cluster);
+
+          // TODO: 剩下的
+          this.config.tile.data[cluster.column + 2][cluster.row].type =
+            MATCH3_RGB_COLORS.length + 2; // 測試用
         } else if (cluster.shape === "L-down-left") {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
-          func(i, cluster.column + 1, cluster.row + 2, cluster);
+          func(i, cluster.column + 1, cluster.row + 2, cluster); // 中間
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column, cluster.row + 2, cluster);
+
+          // TODO: 剩下的
+          this.config.tile.data[cluster.column + 1][cluster.row + 2].type =
+            MATCH3_RGB_COLORS.length + 2; // 測試用
         } else if (cluster.shape === "L-right-up") {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
-          func(i, cluster.column + 2, cluster.row + 1, cluster);
+          func(i, cluster.column + 2, cluster.row + 1, cluster); // 中間
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 2, cluster.row, cluster);
+          // TODO: 剩下的
+          this.config.tile.data[cluster.column + 2][cluster.row + 1].type =
+            MATCH3_RGB_COLORS.length + 2; // 測試用
         }
+        console.log("L shape");
       } else {
         // 處理線性群集（水平或垂直）
         let colOffset = 0;
@@ -868,6 +902,16 @@ export default class Match3Core {
             colOffset++;
           } else {
             rowOffset++;
+          }
+        }
+        // 4x1 || 1x4
+        if (cluster.length === 4) {
+          if (cluster.horizontal) {
+            this.config.tile.data[cluster.column + 1][cluster.row].type =
+              MATCH3_RGB_COLORS.length + 3; // 測試用
+          } else {
+            this.config.tile.data[cluster.column][cluster.row + 1].type =
+              MATCH3_RGB_COLORS.length + 4; // 測試用
           }
         }
       }
