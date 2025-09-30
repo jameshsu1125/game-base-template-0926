@@ -59,7 +59,7 @@ export default class Match3Manager {
         MATCH3_CONFIG.width,
         MATCH3_CONFIG.height
       );
-      graphics.setDepth(upper ? 1 : 2);
+      graphics.setDepth(upper ? 0 : 1);
     };
 
     if (this.state[name]) {
