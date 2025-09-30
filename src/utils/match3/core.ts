@@ -1,0 +1,774 @@
+import {
+  Cluster,
+  GameState,
+  MouseTileResult,
+  Move,
+  Position,
+  TConfig,
+  TileCoordinate,
+  TState,
+} from "./types";
+
+export default class Match3Core {
+  private canvas: HTMLCanvasElement;
+  private context: CanvasRenderingContext2D;
+  private score: number = 0;
+
+  // Level configuration
+  private config: TConfig = {
+    x: 0,
+    y: 0,
+    columns: 8,
+    rows: 8,
+    tile: {
+      width: 40,
+      height: 40,
+      data: [],
+    },
+    selected: { selected: false, column: 0, row: 0 },
+  };
+
+  private state: TState = {
+    isDrag: false,
+    status: GameState.INIT,
+    time: {
+      last: 0,
+      fpsTime: 0,
+      fps: 0,
+      count: 0,
+    },
+    animation: {
+      state: 0,
+      time: 0,
+      total: 0.3,
+    },
+  };
+
+  // Tile colors in RGB
+  private readonly tileColors: number[][] = [
+    [255, 128, 128],
+    [128, 255, 128],
+    [128, 128, 255],
+    [255, 255, 128],
+    [255, 128, 255],
+    [128, 255, 255],
+    [255, 255, 255],
+  ];
+
+  // Game data
+  private clusters: Cluster[] = [];
+  private moves: Move[] = [];
+  private currentMove: Move = { column1: 0, row1: 0, column2: 0, row2: 0 };
+
+  // Features
+  private showMoves: boolean = false;
+  private aiBot: boolean = false;
+  private gameOver: boolean = false;
+
+  constructor(canvasId: string) {
+    const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    if (!canvas) {
+      throw new Error(`Canvas element with id "${canvasId}" not found`);
+    }
+
+    this.canvas = canvas;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Failed to get 2D context from canvas");
+    }
+    this.context = context;
+
+    this.init();
+  }
+
+  private init(): void {
+    // Add mouse events
+    this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
+    this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
+    this.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
+    this.canvas.addEventListener("mouseout", this.onMouseOut.bind(this));
+
+    const { width, height } = this.canvas;
+    this.config.tile.width = width / this.config.columns;
+    this.config.tile.height = height / this.config.rows;
+
+    // Initialize the two-dimensional tile array
+    for (let i = 0; i < this.config.columns; i++) {
+      this.config.tile.data[i] = [];
+      for (let j = 0; j < this.config.rows; j++) {
+        this.config.tile.data[i][j] = { type: 0, shift: 0 };
+      }
+    }
+
+    // Start new game
+    this.newGame();
+
+    // Enter main loop
+    this.main(0);
+  }
+
+  private main = (delta: number): void => {
+    window.requestAnimationFrame(this.main);
+    this.update(delta);
+    this.render();
+  };
+
+  private update(delta: number): void {
+    const dt = (delta - this.state.time.last) / 1000;
+    this.state.time.last = delta;
+
+    this.updateFps(dt);
+
+    if (this.state.status === GameState.READY) {
+      // Game is ready for player input
+      if (this.moves.length <= 0) {
+        this.gameOver = true;
+      }
+
+      // AI bot logic
+      if (this.aiBot) {
+        this.state.animation.time += dt;
+        if (this.state.animation.time > this.state.animation.total) {
+          this.findMoves();
+
+          if (this.moves.length > 0) {
+            const move =
+              this.moves[Math.floor(Math.random() * this.moves.length)];
+            this.mouseSwap(move.column1, move.row1, move.column2, move.row2);
+          }
+          this.state.animation.time = 0;
+        }
+      }
+    } else if (this.state.status === GameState.RESOLVE) {
+      this.state.animation.time += dt;
+
+      if (this.state.animation.state === 0) {
+        if (this.state.animation.time > this.state.animation.total) {
+          this.findClusters();
+
+          if (this.clusters.length > 0) {
+            // Add points to score
+            for (const cluster of this.clusters) {
+              this.score += 100 * (cluster.length - 2);
+            }
+
+            this.removeClusters();
+            this.state.animation.state = 1;
+          } else {
+            this.state.status = GameState.READY;
+          }
+          this.state.animation.time = 0;
+        }
+      } else if (this.state.animation.state === 1) {
+        if (this.state.animation.time > this.state.animation.total) {
+          this.shiftTiles();
+          this.state.animation.state = 0;
+          this.state.animation.time = 0;
+
+          this.findClusters();
+          if (this.clusters.length <= 0) {
+            this.state.status = GameState.READY;
+          }
+        }
+      } else if (this.state.animation.state === 2) {
+        if (this.state.animation.time > this.state.animation.total) {
+          this.swap(
+            this.currentMove.column1,
+            this.currentMove.row1,
+            this.currentMove.column2,
+            this.currentMove.row2
+          );
+
+          this.findClusters();
+          if (this.clusters.length > 0) {
+            this.state.animation.state = 0;
+            this.state.animation.time = 0;
+            this.state.status = GameState.RESOLVE;
+          } else {
+            this.state.animation.state = 3;
+            this.state.animation.time = 0;
+          }
+
+          this.findMoves();
+          this.findClusters();
+        }
+      } else if (this.state.animation.state === 3) {
+        if (this.state.animation.time > this.state.animation.total) {
+          this.swap(
+            this.currentMove.column1,
+            this.currentMove.row1,
+            this.currentMove.column2,
+            this.currentMove.row2
+          );
+          this.state.status = GameState.READY;
+        }
+      }
+
+      this.findMoves();
+      this.findClusters();
+    }
+  }
+
+  private updateFps(dt: number): void {
+    if (this.state.time.fpsTime > 0.25) {
+      this.state.time.fps = Math.round(
+        this.state.time.count / this.state.time.fpsTime
+      );
+      this.state.time.fpsTime = 0;
+      this.state.time.count = 0;
+    }
+
+    this.state.time.fpsTime += dt;
+    this.state.time.count++;
+  }
+
+  private drawCenterText(
+    text: string,
+    x: number,
+    y: number,
+    width: number
+  ): void {
+    const textDim = this.context.measureText(text);
+    this.context.fillText(text, x + (width - textDim.width) / 2, y);
+  }
+
+  private render(): void {
+    // Draw level background
+    const levelWidth = this.config.columns * this.config.tile.width;
+    const levelHeight = this.config.rows * this.config.tile.height;
+    this.context.fillStyle = "#000000";
+    this.context.fillRect(
+      this.config.x - 4,
+      this.config.y - 4,
+      levelWidth + 8,
+      levelHeight + 8
+    );
+
+    this.renderTiles();
+    this.renderClusters();
+
+    if (
+      this.showMoves &&
+      this.clusters.length <= 0 &&
+      this.state.status === GameState.READY
+    ) {
+      this.renderMoves();
+    }
+
+    // Game Over overlay
+    if (this.gameOver) {
+      this.context.fillStyle = "rgba(0, 0, 0, 0.8)";
+      this.context.fillRect(
+        this.config.x,
+        this.config.y,
+        levelWidth,
+        levelHeight
+      );
+
+      this.context.fillStyle = "#ffffff";
+      this.context.font = "24px Verdana";
+      this.drawCenterText(
+        "Game Over!",
+        this.config.x,
+        this.config.y + levelHeight / 2 + 10,
+        levelWidth
+      );
+    }
+  }
+
+  private renderTiles(): void {
+    for (let i = 0; i < this.config.columns; i++) {
+      for (let j = 0; j < this.config.rows; j++) {
+        const shift = this.config.tile.data[i][j].shift;
+        const coord = this.getTileCoordinate(
+          i,
+          j,
+          0,
+          (this.state.animation.time / this.state.animation.total) * shift
+        );
+
+        if (this.config.tile.data[i][j].type >= 0) {
+          const col = this.tileColors[this.config.tile.data[i][j].type];
+          this.drawTile(coord.x, coord.y, col[0], col[1], col[2]);
+        }
+
+        if (this.config.selected.selected) {
+          if (
+            this.config.selected.column === i &&
+            this.config.selected.row === j
+          ) {
+            this.drawTile(coord.x, coord.y, 255, 0, 0);
+          }
+        }
+      }
+    }
+
+    // Render swap animation
+    if (
+      this.state.status === GameState.RESOLVE &&
+      (this.state.animation.state === 2 || this.state.animation.state === 3)
+    ) {
+      const shiftX = this.currentMove.column2 - this.currentMove.column1;
+      const shiftY = this.currentMove.row2 - this.currentMove.row1;
+
+      const coord1 = this.getTileCoordinate(
+        this.currentMove.column1,
+        this.currentMove.row1,
+        0,
+        0
+      );
+      const coord1shift = this.getTileCoordinate(
+        this.currentMove.column1,
+        this.currentMove.row1,
+        (this.state.animation.time / this.state.animation.total) * shiftX,
+        (this.state.animation.time / this.state.animation.total) * shiftY
+      );
+      const col1 =
+        this.tileColors[
+          this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
+            .type
+        ];
+
+      const coord2 = this.getTileCoordinate(
+        this.currentMove.column2,
+        this.currentMove.row2,
+        0,
+        0
+      );
+      const coord2shift = this.getTileCoordinate(
+        this.currentMove.column2,
+        this.currentMove.row2,
+        (this.state.animation.time / this.state.animation.total) * -shiftX,
+        (this.state.animation.time / this.state.animation.total) * -shiftY
+      );
+      const col2 =
+        this.tileColors[
+          this.config.tile.data[this.currentMove.column2][this.currentMove.row2]
+            .type
+        ];
+
+      this.drawTile(coord1.x, coord1.y, 0, 0, 0);
+      this.drawTile(coord2.x, coord2.y, 0, 0, 0);
+
+      if (this.state.animation.state === 2) {
+        this.drawTile(coord1shift.x, coord1shift.y, col1[0], col1[1], col1[2]);
+        this.drawTile(coord2shift.x, coord2shift.y, col2[0], col2[1], col2[2]);
+      } else {
+        this.drawTile(coord2shift.x, coord2shift.y, col2[0], col2[1], col2[2]);
+        this.drawTile(coord1shift.x, coord1shift.y, col1[0], col1[1], col1[2]);
+      }
+    }
+  }
+
+  private getTileCoordinate(
+    column: number,
+    row: number,
+    columnOffset: number,
+    rowOffset: number
+  ): TileCoordinate {
+    const x = this.config.x + (column + columnOffset) * this.config.tile.width;
+    const y = this.config.y + (row + rowOffset) * this.config.tile.height;
+    return { x, y };
+  }
+
+  private drawTile(
+    x: number,
+    y: number,
+    r: number,
+    g: number,
+    b: number
+  ): void {
+    this.context.fillStyle = `rgb(${r},${g},${b})`;
+    this.context.fillRect(
+      x + 2,
+      y + 2,
+      this.config.tile.width - 4,
+      this.config.tile.height - 4
+    );
+  }
+
+  private renderClusters(): void {
+    for (const cluster of this.clusters) {
+      const coord = this.getTileCoordinate(cluster.column, cluster.row, 0, 0);
+
+      if (cluster.horizontal) {
+        this.context.fillStyle = "#00ff00";
+        this.context.fillRect(
+          coord.x + this.config.tile.width / 2,
+          coord.y + this.config.tile.height / 2 - 4,
+          (cluster.length - 1) * this.config.tile.width,
+          8
+        );
+      } else {
+        this.context.fillStyle = "#0000ff";
+        this.context.fillRect(
+          coord.x + this.config.tile.width / 2 - 4,
+          coord.y + this.config.tile.height / 2,
+          8,
+          (cluster.length - 1) * this.config.tile.height
+        );
+      }
+    }
+  }
+
+  private renderMoves(): void {
+    for (const move of this.moves) {
+      const coord1 = this.getTileCoordinate(move.column1, move.row1, 0, 0);
+      const coord2 = this.getTileCoordinate(move.column2, move.row2, 0, 0);
+
+      this.context.strokeStyle = "#ff0000";
+      this.context.beginPath();
+      this.context.moveTo(
+        coord1.x + this.config.tile.width / 2,
+        coord1.y + this.config.tile.height / 2
+      );
+      this.context.lineTo(
+        coord2.x + this.config.tile.width / 2,
+        coord2.y + this.config.tile.height / 2
+      );
+      this.context.stroke();
+    }
+  }
+
+  public newGame(): void {
+    this.score = 0;
+    this.state.status = GameState.READY;
+    this.gameOver = false;
+    this.createLevel();
+    this.findMoves();
+    this.findClusters();
+  }
+
+  private createLevel(): void {
+    let done = false;
+
+    while (!done) {
+      for (let i = 0; i < this.config.columns; i++) {
+        for (let j = 0; j < this.config.rows; j++) {
+          this.config.tile.data[i][j].type = this.getRandomTile();
+        }
+      }
+
+      this.resolveClusters();
+      this.findMoves();
+
+      if (this.moves.length > 0) {
+        done = true;
+      }
+    }
+  }
+
+  private getRandomTile(): number {
+    return Math.floor(Math.random() * this.tileColors.length);
+  }
+
+  private resolveClusters(): void {
+    this.findClusters();
+
+    while (this.clusters.length > 0) {
+      this.removeClusters();
+      this.shiftTiles();
+      this.findClusters();
+    }
+  }
+
+  private findClusters(): void {
+    this.clusters = [];
+
+    // Find horizontal clusters
+    for (let j = 0; j < this.config.rows; j++) {
+      let matchLength = 1;
+      for (let i = 0; i < this.config.columns; i++) {
+        let checkCluster = false;
+
+        if (i === this.config.columns - 1) {
+          checkCluster = true;
+        } else {
+          if (
+            this.config.tile.data[i][j].type ===
+              this.config.tile.data[i + 1][j].type &&
+            this.config.tile.data[i][j].type !== -1
+          ) {
+            matchLength += 1;
+          } else {
+            checkCluster = true;
+          }
+        }
+
+        if (checkCluster) {
+          if (matchLength >= 3) {
+            this.clusters.push({
+              column: i + 1 - matchLength,
+              row: j,
+              length: matchLength,
+              horizontal: true,
+            });
+          }
+          matchLength = 1;
+        }
+      }
+    }
+
+    // Find vertical clusters
+    for (let i = 0; i < this.config.columns; i++) {
+      let matchLength = 1;
+      for (let j = 0; j < this.config.rows; j++) {
+        let checkCluster = false;
+
+        if (j === this.config.rows - 1) {
+          checkCluster = true;
+        } else {
+          if (
+            this.config.tile.data[i][j].type ===
+              this.config.tile.data[i][j + 1].type &&
+            this.config.tile.data[i][j].type !== -1
+          ) {
+            matchLength += 1;
+          } else {
+            checkCluster = true;
+          }
+        }
+
+        if (checkCluster) {
+          if (matchLength >= 3) {
+            this.clusters.push({
+              column: i,
+              row: j + 1 - matchLength,
+              length: matchLength,
+              horizontal: false,
+            });
+          }
+          matchLength = 1;
+        }
+      }
+    }
+  }
+
+  private findMoves(): void {
+    this.moves = [];
+
+    // Check horizontal swaps
+    for (let j = 0; j < this.config.rows; j++) {
+      for (let i = 0; i < this.config.columns - 1; i++) {
+        this.swap(i, j, i + 1, j);
+        this.findClusters();
+        this.swap(i, j, i + 1, j);
+
+        if (this.clusters.length > 0) {
+          this.moves.push({ column1: i, row1: j, column2: i + 1, row2: j });
+        }
+      }
+    }
+
+    // Check vertical swaps
+    for (let i = 0; i < this.config.columns; i++) {
+      for (let j = 0; j < this.config.rows - 1; j++) {
+        this.swap(i, j, i, j + 1);
+        this.findClusters();
+        this.swap(i, j, i, j + 1);
+
+        if (this.clusters.length > 0) {
+          this.moves.push({ column1: i, row1: j, column2: i, row2: j + 1 });
+        }
+      }
+    }
+
+    this.clusters = [];
+  }
+
+  private loopClusters(
+    func: (index: number, column: number, row: number, cluster: Cluster) => void
+  ): void {
+    for (let i = 0; i < this.clusters.length; i++) {
+      const cluster = this.clusters[i];
+      let colOffset = 0;
+      let rowOffset = 0;
+      for (let j = 0; j < cluster.length; j++) {
+        func(i, cluster.column + colOffset, cluster.row + rowOffset, cluster);
+
+        if (cluster.horizontal) {
+          colOffset++;
+        } else {
+          rowOffset++;
+        }
+      }
+    }
+  }
+
+  private removeClusters(): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    this.loopClusters((_index, column, row, _cluster) => {
+      this.config.tile.data[column][row].type = -1;
+      // console.log(indexedDB, _cluster);
+    });
+
+    for (let i = 0; i < this.config.columns; i++) {
+      let shift = 0;
+      for (let j = this.config.rows - 1; j >= 0; j--) {
+        if (this.config.tile.data[i][j].type === -1) {
+          shift++;
+          this.config.tile.data[i][j].shift = 0;
+        } else {
+          this.config.tile.data[i][j].shift = shift;
+        }
+      }
+    }
+  }
+
+  private shiftTiles(): void {
+    for (let i = 0; i < this.config.columns; i++) {
+      for (let j = this.config.rows - 1; j >= 0; j--) {
+        if (this.config.tile.data[i][j].type === -1) {
+          this.config.tile.data[i][j].type = this.getRandomTile();
+        } else {
+          const shift = this.config.tile.data[i][j].shift;
+          if (shift > 0) {
+            this.swap(i, j, i, j + shift);
+          }
+        }
+        this.config.tile.data[i][j].shift = 0;
+      }
+    }
+  }
+
+  private getMouseTile(pos: Position): MouseTileResult {
+    const tx = Math.floor((pos.x - this.config.x) / this.config.tile.width);
+    const ty = Math.floor((pos.y - this.config.y) / this.config.tile.height);
+
+    if (
+      tx >= 0 &&
+      tx < this.config.columns &&
+      ty >= 0 &&
+      ty < this.config.rows
+    ) {
+      return { valid: true, x: tx, y: ty };
+    }
+
+    return { valid: false, x: 0, y: 0 };
+  }
+
+  private canSwap(x1: number, y1: number, x2: number, y2: number): boolean {
+    if (
+      (Math.abs(x1 - x2) === 1 && y1 === y2) ||
+      (Math.abs(y1 - y2) === 1 && x1 === x2)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private swap(x1: number, y1: number, x2: number, y2: number): void {
+    const type = this.config.tile.data[x1][y1].type;
+    this.config.tile.data[x1][y1].type = this.config.tile.data[x2][y2].type;
+    this.config.tile.data[x2][y2].type = type;
+  }
+
+  private mouseSwap(c1: number, r1: number, c2: number, r2: number): void {
+    this.currentMove = { column1: c1, row1: r1, column2: c2, row2: r2 };
+    this.config.selected.selected = false;
+    this.state.animation.state = 2;
+    this.state.animation.time = 0;
+    this.state.status = GameState.RESOLVE;
+  }
+
+  private onMouseMove(e: MouseEvent): void {
+    const pos = this.getMousePos(this.canvas, e);
+
+    if (this.state.isDrag && this.config.selected.selected) {
+      const mt = this.getMouseTile(pos);
+      if (mt.valid) {
+        if (
+          this.canSwap(
+            mt.x,
+            mt.y,
+            this.config.selected.column,
+            this.config.selected.row
+          )
+        ) {
+          this.mouseSwap(
+            mt.x,
+            mt.y,
+            this.config.selected.column,
+            this.config.selected.row
+          );
+        }
+      }
+    }
+  }
+
+  private onMouseDown(e: MouseEvent): void {
+    const pos = this.getMousePos(this.canvas, e);
+
+    if (!this.state.isDrag) {
+      const mt = this.getMouseTile(pos);
+
+      if (mt.valid) {
+        let swapped = false;
+        if (this.config.selected.selected) {
+          if (
+            mt.x === this.config.selected.column &&
+            mt.y === this.config.selected.row
+          ) {
+            this.config.selected.selected = false;
+            this.state.isDrag = true;
+            return;
+          } else if (
+            this.canSwap(
+              mt.x,
+              mt.y,
+              this.config.selected.column,
+              this.config.selected.row
+            )
+          ) {
+            this.mouseSwap(
+              mt.x,
+              mt.y,
+              this.config.selected.column,
+              this.config.selected.row
+            );
+            swapped = true;
+          }
+        }
+
+        if (!swapped) {
+          this.config.selected.column = mt.x;
+          this.config.selected.row = mt.y;
+          this.config.selected.selected = true;
+        }
+      } else {
+        this.config.selected.selected = false;
+      }
+
+      this.state.isDrag = true;
+    }
+  }
+
+  private onMouseUp(): void {
+    this.state.isDrag = false;
+  }
+
+  private onMouseOut(): void {
+    this.state.isDrag = false;
+  }
+
+  private getMousePos(canvas: HTMLCanvasElement, e: MouseEvent): Position {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: Math.round(
+        ((e.clientX - rect.left) / (rect.right - rect.left)) * canvas.width
+      ),
+      y: Math.round(
+        ((e.clientY - rect.top) / (rect.bottom - rect.top)) * canvas.height
+      ),
+    };
+  }
+
+  // Public methods for external control
+  public getScore(): number {
+    return this.score;
+  }
+
+  public isGameOver(): boolean {
+    return this.gameOver;
+  }
+}

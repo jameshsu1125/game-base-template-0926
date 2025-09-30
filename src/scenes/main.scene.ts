@@ -3,7 +3,6 @@ import TemplateLayoutManager from "../managers/layout/template-layout.manager";
 import UIManager from "../managers/ui.manager";
 import ServiceLocator from "../services/service-locator/service-locator.service";
 import ServiceRegistry from "../services/service-registry.service";
-import { AppEvents } from "../services/event-bus/app-events.constants";
 import AppStateSystem from "../systems/app-state.system";
 import UISystem from "../systems/ui.system";
 import { DebugOverlay } from "../ui/debug-overlay";
@@ -20,102 +19,108 @@ import { DebugOverlay } from "../ui/debug-overlay";
  * - Professional development patterns
  */
 export default class MainScene extends Phaser.Scene {
-    // System management
+  // System management
 
-    // Template systems
-    private templateLayoutManager!: TemplateLayoutManager;
+  // Template systems
+  private templateLayoutManager!: TemplateLayoutManager;
 
-    // Architecture demo systems
-    private appStateSystem!: AppStateSystem;
-    private uiSystem!: UISystem;
-    private uiManager!: UIManager;
+  // Architecture demo systems
+  private appStateSystem!: AppStateSystem;
+  private uiSystem!: UISystem;
+  private uiManager!: UIManager;
 
+  constructor() {
+    super("MainScene");
+  }
 
-    constructor() {
-        super("MainScene");
-    }
+  /**
+   * Create and display the background image
+   */
+  private createBackground(): void {
+    // Add background image and scale to cover the screen
+    const background = this.add.image(
+      this.scale.width / 2,
+      this.scale.height / 2,
+      "background"
+    );
+    background.setOrigin(0.5, 0.5);
 
-    /**
-     * Create and display the background image
-     */
-    private createBackground(): void {
-        // Add background image and scale to cover the screen
-        const background = this.add.image(
-            this.scale.width / 2,
-            this.scale.height / 2,
-            "background"
-        );
-        background.setOrigin(0.5, 0.5);
+    // Scale to cover the entire screen while maintaining aspect ratio
+    const scaleX = this.scale.width / background.width;
+    const scaleY = this.scale.height / background.height;
+    const scale = Math.max(scaleX, scaleY);
+    background.setScale(scale);
 
-        // Scale to cover the entire screen while maintaining aspect ratio
-        const scaleX = this.scale.width / background.width;
-        const scaleY = this.scale.height / background.height;
-        const scale = Math.max(scaleX, scaleY);
-        background.setScale(scale);
+    // Ensure background is rendered behind everything else
+    background.setDepth(-10);
 
-        // Ensure background is rendered behind everything else
-        background.setDepth(-10);
+    console.log("[MainScene] Background image added and scaled");
+  }
 
-        console.log("[MainScene] Background image added and scaled");
-    }
+  /**
+   * This fn gets called by Phaser.js when the scene is created
+   */
+  create() {
+    this.createBackground();
+    // DebugOverlay.getInstance();
 
-    /**
-     * This fn gets called by Phaser.js when the scene is created
-     */
-    create() {
-        this.createBackground();
-        DebugOverlay.getInstance();
+    this.getInstances();
+    this.initializeChoreography();
+  }
 
-        this.getInstances();
-        this.initializeChoreography();
+  private initializeChoreography(): void {
+    this.initializeSystems();
 
-    }
+    // TEMPORARILY DISABLED: Hide existing game UI for clean template demo
+    // this.towerSystem.createTowers(
+    //     this.gameAreaManager.getGameAreas().gameContainer
+    // );
+    // this.combatSystem.setupCollisionTargets();
 
-    private initializeChoreography(): void {
-        this.initializeSystems();
+    // New architecture demo setup (centered since no game UI)
+    // this.createArchitectureDemo();
 
-        // TEMPORARILY DISABLED: Hide existing game UI for clean template demo
-        // this.towerSystem.createTowers(
-        //     this.gameAreaManager.getGameAreas().gameContainer
-        // );
-        // this.combatSystem.setupCollisionTargets();
+    this.createMatch3();
+  }
 
-        // New architecture demo setup (centered since no game UI)
-        this.createArchitectureDemo();
-    }
+  private getInstances(): void {
+    // Create ServiceRegistry which handles all service registration
+    new ServiceRegistry(this);
 
-    private getInstances(): void {
-        // Create ServiceRegistry which handles all service registration
-        new ServiceRegistry(this);
+    // Get template systems
+    this.templateLayoutManager = ServiceLocator.get<TemplateLayoutManager>(
+      "templateLayoutManager"
+    );
 
-        // Get template systems
-        this.templateLayoutManager = ServiceLocator.get<TemplateLayoutManager>("templateLayoutManager");
+    // Get architecture demo systems
+    this.appStateSystem = ServiceLocator.get<AppStateSystem>("appStateSystem");
+    this.uiSystem = ServiceLocator.get<UISystem>("uiSystem");
+    this.uiManager = ServiceLocator.get<UIManager>("uiManager");
+  }
 
-        // Get architecture demo systems
-        this.appStateSystem = ServiceLocator.get<AppStateSystem>("appStateSystem");
-        this.uiSystem = ServiceLocator.get<UISystem>("uiSystem");
-        this.uiManager = ServiceLocator.get<UIManager>("uiManager");
-    }
+  private initializeSystems(): void {
+    // Initialize template layout
+    this.templateLayoutManager.createTemplateAreas();
 
-    private initializeSystems(): void {
-        // Initialize template layout
-        this.templateLayoutManager.createTemplateAreas();
+    // Initialize architecture demo systems
+    this.appStateSystem.initialize("MainScene");
+    this.uiSystem.initialize();
+  }
 
-        // Initialize architecture demo systems
-        this.appStateSystem.initialize("MainScene");
-        this.uiSystem.initialize();
-    }
+  private createMatch3(): void {
+    this.uiManager.createMatch3();
+  }
 
-    /**
-     * Create architecture demo to showcase template patterns
-     */
-    private createArchitectureDemo(): void {
-        const centerX = this.scale.width / 2;
-        const centerY = this.scale.height / 2;
+  /**
+   * Create architecture demo to showcase template patterns
+   */
+  private createArchitectureDemo(): void {
+    const centerX = this.scale.width / 2;
+    const centerY = this.scale.height / 2;
 
-        // Create the demo UI using the UIManager
-        this.uiManager.createArchitectureDemo(centerX, centerY);
+    // Create the demo UI using the UIManager
+    this.uiManager.createArchitectureDemo(centerX, centerY);
 
-        console.log("[MainScene] ✨ Template architecture demo created");
-    }
+    console.log("[MainScene] ✨ Template architecture demo created");
+  }
 }

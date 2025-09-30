@@ -6,8 +6,8 @@ import TextDisplay from "../components/text-display.component";
 import { LAYOUT_POSITIONS } from "../configs/app-constants";
 import { TEMPLATE_CONFIG } from "../configs/template-config";
 import {
-    AppEvents,
-    emitAppEvent,
+  AppEvents,
+  emitAppEvent,
 } from "../services/event-bus/app-events.constants";
 
 /**
@@ -15,360 +15,341 @@ import {
  * Shows: Manager pattern, Component lifecycle, UI coordination
  */
 export default class UIManager {
-    private scene: Phaser.Scene;
-    private modal?: Modal;
-    private demoComponents: Map<string, Phaser.GameObjects.GameObject> =
-        new Map();
+  private scene: Phaser.Scene;
+  private modal?: Modal;
+  private demoComponents: Map<string, Phaser.GameObjects.GameObject> =
+    new Map();
 
-    constructor(scene: Phaser.Scene) {
-        this.scene = scene;
-        console.log("[UIManager] Initialized");
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+    console.log("[UIManager] Initialized");
+  }
+
+  /**
+   * Create a modal for architecture demonstration
+   */
+  public createModal(): Modal {
+    if (this.modal) {
+      console.warn("[UIManager] Modal already exists");
+      return this.modal;
     }
 
-    /**
-     * Create a modal for architecture demonstration
-     */
-    public createModal(): Modal {
-        if (this.modal) {
-            console.warn("[UIManager] Modal already exists");
-            return this.modal;
-        }
+    this.modal = new Modal(this.scene, {
+      width: 400,
+      height: 300,
+    });
 
-        this.modal = new Modal(this.scene, {
-            width: 400,
-            height: 300,
-        });
+    // Center the modal properly
+    const centerX = this.scene.scale.width / 2;
+    const centerY = this.scene.scale.height / 2;
+    this.modal.setPosition(centerX, centerY);
 
-        // Center the modal properly
-        const centerX = this.scene.scale.width / 2;
-        const centerY = this.scene.scale.height / 2;
-        this.modal.setPosition(centerX, centerY);
+    console.log("[UIManager] Modal created and centered");
+    return this.modal;
+  }
 
-        console.log("[UIManager] Modal created and centered");
-        return this.modal;
+  /**
+   * Show modal with demo content
+   */
+  public showDemoModal(): void {
+    console.log("[UIManager] 🎭 showDemoModal() called");
+
+    if (!this.modal) {
+      console.log("[UIManager] 🏗️  Creating modal (first time)");
+      this.createModal();
+    } else {
+      console.log("[UIManager] ♻️  Reusing existing modal");
     }
 
-    /**
-     * Show modal with demo content
-     */
-    public showDemoModal(): void {
-        console.log("[UIManager] 🎭 showDemoModal() called");
+    // Clear any existing content
+    console.log("[UIManager] 🧹 Clearing modal content");
+    this.modal!.clearContent();
 
-        if (!this.modal) {
-            console.log("[UIManager] 🏗️  Creating modal (first time)");
-            this.createModal();
-        } else {
-            console.log("[UIManager] ♻️  Reusing existing modal");
-        }
+    // Add demo content
+    console.log("[UIManager] 📝 Adding modal content");
+    this.modal!.createTitle("Architecture Demo");
+    this.modal!.createMessage(
+      "This demonstrates the Manager Pattern. \n\nCheck modal.component.md for more details. \n\nSystems → Managers → Components"
+    );
 
-        // Clear any existing content
-        console.log("[UIManager] 🧹 Clearing modal content");
-        this.modal!.clearContent();
+    // Add a button that closes the modal
+    console.log("[UIManager] 🔘 Adding close button");
+    this.modal!.createButton("Got it!", () => {
+      console.log("[UIManager] 🔘 Close button clicked");
+      this.hideDemoModal();
+    });
 
-        // Add demo content
-        console.log("[UIManager] 📝 Adding modal content");
-        this.modal!.createTitle("Architecture Demo");
-        this.modal!.createMessage(
-            "This demonstrates the Manager Pattern. \n\nCheck modal.component.md for more details. \n\nSystems → Managers → Components"
-        );
+    console.log("[UIManager] 🎬 Showing modal with animation");
+    this.modal!.show();
 
-        // Add a button that closes the modal
-        console.log("[UIManager] 🔘 Adding close button");
-        this.modal!.createButton("Got it!", () => {
-            console.log("[UIManager] 🔘 Close button clicked");
-            this.hideDemoModal();
-        });
+    console.log("[UIManager] 📡 Emitting MODAL_OPENED event");
+    emitAppEvent(AppEvents.MODAL_OPENED, {
+      modalType: "demo-modal",
+    });
 
-        console.log("[UIManager] 🎬 Showing modal with animation");
-        this.modal!.show();
+    console.log("[UIManager] ✨ Demo modal fully displayed");
+  }
 
-        console.log("[UIManager] 📡 Emitting MODAL_OPENED event");
-        emitAppEvent(AppEvents.MODAL_OPENED, {
-            modalType: "demo-modal",
-        });
+  /**
+   * Hide the demo modal
+   */
+  public hideDemoModal(): void {
+    console.log("[UIManager] 🎭 hideDemoModal() called");
 
-        console.log("[UIManager] ✨ Demo modal fully displayed");
+    if (this.modal) {
+      console.log("[UIManager] 🎬 Hiding modal with animation");
+      this.modal.hide();
+
+      console.log("[UIManager] 📡 Emitting MODAL_CLOSED event");
+      emitAppEvent(AppEvents.MODAL_CLOSED, {
+        modalType: "demo-modal",
+      });
+
+      console.log("[UIManager] ✅ Demo modal hidden");
+    } else {
+      console.log("[UIManager] ⚠️  No modal to hide");
+    }
+  }
+
+  /**
+   * Create a demo button
+   */
+  public createDemoButton(
+    x: number,
+    y: number,
+    text: string,
+    buttonId: string,
+    fontSize?: string
+  ): SimpleButton {
+    const button = new SimpleButton(this.scene, x, y, {
+      text,
+      buttonId,
+      width: this.scene.scale.height * LAYOUT_POSITIONS.BUTTON.WIDTH_PERCENT,
+      height: this.scene.scale.height * LAYOUT_POSITIONS.BUTTON.HEIGHT_PERCENT,
+      fontSize: fontSize,
+    });
+
+    this.scene.add.existing(button);
+    this.demoComponents.set(buttonId, button);
+
+    console.log(`[UIManager] Demo button created: ${buttonId}`);
+    return button;
+  }
+
+  /**
+   * Create a demo text display
+   */
+  public createDemoText(
+    x: number,
+    y: number,
+    text: string,
+    elementId: string,
+    backgroundColor?: number,
+    fontSize?: string
+  ): TextDisplay {
+    const textDisplay = new TextDisplay(this.scene, x, y, {
+      text,
+      elementId,
+      backgroundColor,
+      fontSize: fontSize || "18px",
+      padding: 15,
+    });
+
+    this.scene.add.existing(textDisplay);
+    this.demoComponents.set(elementId, textDisplay);
+
+    console.log(`[UIManager] Demo text created: ${elementId}`);
+    return textDisplay;
+  }
+
+  /**
+   * Create a demo character avatar
+   */
+  public createDemoCharacter(
+    x: number,
+    y: number,
+    characterId: string,
+    characterName: string,
+    size: number = 80,
+    primaryColor?: number,
+    secondaryColor?: number,
+    useNeutralAtlasBody: boolean = false
+  ): CharacterAvatar {
+    const avatar = new CharacterAvatar(this.scene, x, y, {
+      characterId,
+      characterName,
+      size,
+      primaryColor,
+      secondaryColor,
+      animated: true,
+      useNeutralAtlasBody,
+    });
+
+    this.scene.add.existing(avatar);
+    this.demoComponents.set(characterId, avatar);
+
+    // Emit creation event for tracking
+    emitAppEvent(AppEvents.UI_ELEMENT_CREATED, {
+      elementType: "character-avatar",
+      elementId: characterId,
+    });
+
+    console.log(
+      `[UIManager] Demo character created: ${characterName} (${characterId})`
+    );
+    return avatar;
+  }
+
+  /**
+   * Update demo text by ID
+   */
+  public updateDemoText(
+    elementId: string,
+    newText: string,
+    animated: boolean = false
+  ): void {
+    const textComponent = this.demoComponents.get(elementId);
+
+    if (textComponent && textComponent instanceof TextDisplay) {
+      if (animated) {
+        textComponent.updateTextAnimated(newText);
+      } else {
+        textComponent.setText(newText);
+      }
+
+      console.log(`[UIManager] Updated demo text: ${elementId}`);
+    } else {
+      console.warn(`[UIManager] Demo text component not found: ${elementId}`);
+    }
+  }
+
+  /**
+   * Remove a demo component
+   */
+  public removeDemoComponent(componentId: string): void {
+    const component = this.demoComponents.get(componentId);
+    if (component) {
+      component.destroy();
+      this.demoComponents.delete(componentId);
+      console.log(`[UIManager] Removed demo component: ${componentId}`);
+    }
+  }
+
+  /**
+   * Create a complete architecture demo layout
+   */
+  public createArchitectureDemo(centerX: number, centerY: number): void {
+    // Title text
+    this.createDemoText(
+      centerX,
+      centerY +
+        this.scene.scale.height * LAYOUT_POSITIONS.TITLE.Y_OFFSET_PERCENT,
+      "Game Base Template",
+      "title-text",
+      0x2c3e50,
+      `${Math.round(
+        this.scene.scale.height * LAYOUT_POSITIONS.TITLE.FONT_SIZE_PERCENT
+      )}px`
+    );
+
+    // Character avatars showing visual game elements
+    this.createDemoCharacter(
+      this.scene.scale.width * LAYOUT_POSITIONS.PLAYER_CHARACTER.X_PERCENT,
+      this.scene.scale.height * LAYOUT_POSITIONS.PLAYER_CHARACTER.Y_PERCENT,
+      "player-character",
+      "Player",
+      this.scene.scale.height * LAYOUT_POSITIONS.PLAYER_CHARACTER.SIZE_PERCENT,
+      0x3498db, // Blue
+      0x2980b9
+    );
+
+    if (TEMPLATE_CONFIG.demo.showEnemyCharacter) {
+      this.createDemoCharacter(
+        this.scene.scale.width * LAYOUT_POSITIONS.ENEMY_CHARACTER.X_PERCENT,
+        this.scene.scale.height * LAYOUT_POSITIONS.ENEMY_CHARACTER.Y_PERCENT,
+        "enemy-character",
+        "Enemy",
+        this.scene.scale.height * LAYOUT_POSITIONS.ENEMY_CHARACTER.SIZE_PERCENT,
+        0xe74c3c, // Red (kept for name/health accents)
+        0xc0392b,
+        true // replace body with animated neutral atlas
+      );
     }
 
-    /**
-     * Hide the demo modal
-     */
-    public hideDemoModal(): void {
-        console.log("[UIManager] 🎭 hideDemoModal() called");
+    // Description text
+    this.createDemoText(
+      centerX,
+      centerY +
+        this.scene.scale.height * LAYOUT_POSITIONS.DESCRIPTION.Y_OFFSET_PERCENT,
+      "Click characters or button to see event-driven communication (on debug-overlay.ts)",
+      "description-text",
+      undefined,
+      `${Math.round(
+        this.scene.scale.height * LAYOUT_POSITIONS.DESCRIPTION.FONT_SIZE_PERCENT
+      )}px`
+    );
 
-        if (this.modal) {
-            console.log("[UIManager] 🎬 Hiding modal with animation");
-            this.modal.hide();
+    // Demo button
+    this.createDemoButton(
+      centerX,
+      centerY +
+        this.scene.scale.height * LAYOUT_POSITIONS.BUTTON.Y_OFFSET_PERCENT,
+      "Show Demo Modal",
+      "demo-button",
+      `${Math.round(
+        this.scene.scale.height * LAYOUT_POSITIONS.BUTTON.FONT_SIZE_PERCENT
+      )}px`
+    );
 
-            console.log("[UIManager] 📡 Emitting MODAL_CLOSED event");
-            emitAppEvent(AppEvents.MODAL_CLOSED, {
-                modalType: "demo-modal",
-            });
+    // Status text (will be updated when characters are clicked)
+    this.createDemoText(
+      centerX,
+      centerY +
+        this.scene.scale.height * LAYOUT_POSITIONS.STATUS.Y_OFFSET_PERCENT,
+      "Architecture: Event Bus + Service Locator + Managers",
+      "status-text",
+      0x27ae60,
+      `${Math.round(
+        this.scene.scale.height * LAYOUT_POSITIONS.STATUS.FONT_SIZE_PERCENT
+      )}px`
+    );
 
-            console.log("[UIManager] ✅ Demo modal hidden");
-        } else {
-            console.log("[UIManager] ⚠️  No modal to hide");
-        }
+    // Add instructions for the demo
+    this.createDemoText(
+      centerX,
+      centerY +
+        this.scene.scale.height *
+          LAYOUT_POSITIONS.INSTRUCTIONS.Y_OFFSET_PERCENT,
+      "Add flag toggles into template-config.ts. For example: showEnemyCharacter: true",
+      "instructions-text",
+      undefined,
+      `${Math.round(
+        this.scene.scale.height *
+          LAYOUT_POSITIONS.INSTRUCTIONS.FONT_SIZE_PERCENT
+      )}px`
+    );
+
+    console.log("[UIManager] Architecture demo created with character avatars");
+  }
+
+  public createMatch3() {}
+
+  /**
+   * Clean up all managed UI components
+   */
+  public destroy(): void {
+    // Destroy all demo components
+    this.demoComponents.forEach((component) => {
+      component.destroy();
+    });
+    this.demoComponents.clear();
+
+    // Destroy modal
+    if (this.modal) {
+      this.modal.destroy();
+      this.modal = undefined;
     }
 
-    /**
-     * Create a demo button
-     */
-    public createDemoButton(
-        x: number,
-        y: number,
-        text: string,
-        buttonId: string,
-        fontSize?: string
-    ): SimpleButton {
-        const button = new SimpleButton(this.scene, x, y, {
-            text,
-            buttonId,
-            width:
-                this.scene.scale.height * LAYOUT_POSITIONS.BUTTON.WIDTH_PERCENT,
-            height:
-                this.scene.scale.height *
-                LAYOUT_POSITIONS.BUTTON.HEIGHT_PERCENT,
-            fontSize: fontSize,
-        });
-
-        this.scene.add.existing(button);
-        this.demoComponents.set(buttonId, button);
-
-        console.log(`[UIManager] Demo button created: ${buttonId}`);
-        return button;
-    }
-
-    /**
-     * Create a demo text display
-     */
-    public createDemoText(
-        x: number,
-        y: number,
-        text: string,
-        elementId: string,
-        backgroundColor?: number,
-        fontSize?: string
-    ): TextDisplay {
-        const textDisplay = new TextDisplay(this.scene, x, y, {
-            text,
-            elementId,
-            backgroundColor,
-            fontSize: fontSize || "18px",
-            padding: 15,
-        });
-
-        this.scene.add.existing(textDisplay);
-        this.demoComponents.set(elementId, textDisplay);
-
-        console.log(`[UIManager] Demo text created: ${elementId}`);
-        return textDisplay;
-    }
-
-    /**
-     * Create a demo character avatar
-     */
-    public createDemoCharacter(
-        x: number,
-        y: number,
-        characterId: string,
-        characterName: string,
-        size: number = 80,
-        primaryColor?: number,
-        secondaryColor?: number,
-        useNeutralAtlasBody: boolean = false
-    ): CharacterAvatar {
-        const avatar = new CharacterAvatar(this.scene, x, y, {
-            characterId,
-            characterName,
-            size,
-            primaryColor,
-            secondaryColor,
-            animated: true,
-            useNeutralAtlasBody,
-        });
-
-        this.scene.add.existing(avatar);
-        this.demoComponents.set(characterId, avatar);
-
-        // Emit creation event for tracking
-        emitAppEvent(AppEvents.UI_ELEMENT_CREATED, {
-            elementType: "character-avatar",
-            elementId: characterId,
-        });
-
-        console.log(
-            `[UIManager] Demo character created: ${characterName} (${characterId})`
-        );
-        return avatar;
-    }
-
-    /**
-     * Update demo text by ID
-     */
-    public updateDemoText(
-        elementId: string,
-        newText: string,
-        animated: boolean = false
-    ): void {
-        const textComponent = this.demoComponents.get(elementId);
-
-        if (textComponent && textComponent instanceof TextDisplay) {
-            if (animated) {
-                textComponent.updateTextAnimated(newText);
-            } else {
-                textComponent.setText(newText);
-            }
-
-            console.log(`[UIManager] Updated demo text: ${elementId}`);
-        } else {
-            console.warn(
-                `[UIManager] Demo text component not found: ${elementId}`
-            );
-        }
-    }
-
-    /**
-     * Remove a demo component
-     */
-    public removeDemoComponent(componentId: string): void {
-        const component = this.demoComponents.get(componentId);
-        if (component) {
-            component.destroy();
-            this.demoComponents.delete(componentId);
-            console.log(`[UIManager] Removed demo component: ${componentId}`);
-        }
-    }
-
-    /**
-     * Create a complete architecture demo layout
-     */
-    public createArchitectureDemo(centerX: number, centerY: number): void {
-        // Title text
-        this.createDemoText(
-            centerX,
-            centerY +
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.TITLE.Y_OFFSET_PERCENT,
-            "Game Base Template",
-            "title-text",
-            0x2c3e50,
-            `${Math.round(
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.TITLE.FONT_SIZE_PERCENT
-            )}px`
-        );
-
-        // Character avatars showing visual game elements
-        this.createDemoCharacter(
-            this.scene.scale.width *
-                LAYOUT_POSITIONS.PLAYER_CHARACTER.X_PERCENT,
-            this.scene.scale.height *
-                LAYOUT_POSITIONS.PLAYER_CHARACTER.Y_PERCENT,
-            "player-character",
-            "Player",
-            this.scene.scale.height *
-                LAYOUT_POSITIONS.PLAYER_CHARACTER.SIZE_PERCENT,
-            0x3498db, // Blue
-            0x2980b9
-        );
-
-        if (TEMPLATE_CONFIG.demo.showEnemyCharacter) {
-            this.createDemoCharacter(
-                this.scene.scale.width *
-                    LAYOUT_POSITIONS.ENEMY_CHARACTER.X_PERCENT,
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.ENEMY_CHARACTER.Y_PERCENT,
-                "enemy-character",
-                "Enemy",
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.ENEMY_CHARACTER.SIZE_PERCENT,
-                0xe74c3c, // Red (kept for name/health accents)
-                0xc0392b,
-                true // replace body with animated neutral atlas
-            );
-        }
-
-        // Description text
-        this.createDemoText(
-            centerX,
-            centerY +
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.DESCRIPTION.Y_OFFSET_PERCENT,
-            "Click characters or button to see event-driven communication (on debug-overlay.ts)",
-            "description-text",
-            undefined,
-            `${Math.round(
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.DESCRIPTION.FONT_SIZE_PERCENT
-            )}px`
-        );
-
-        // Demo button
-        this.createDemoButton(
-            centerX,
-            centerY +
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.BUTTON.Y_OFFSET_PERCENT,
-            "Show Demo Modal",
-            "demo-button",
-            `${Math.round(
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.BUTTON.FONT_SIZE_PERCENT
-            )}px`
-        );
-
-        // Status text (will be updated when characters are clicked)
-        this.createDemoText(
-            centerX,
-            centerY +
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.STATUS.Y_OFFSET_PERCENT,
-            "Architecture: Event Bus + Service Locator + Managers",
-            "status-text",
-            0x27ae60,
-            `${Math.round(
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.STATUS.FONT_SIZE_PERCENT
-            )}px`
-        );
-
-        // Add instructions for the demo
-        this.createDemoText(
-            centerX,
-            centerY +
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.INSTRUCTIONS.Y_OFFSET_PERCENT,
-            "Add flag toggles into template-config.ts. For example: showEnemyCharacter: true",
-            "instructions-text",
-            undefined,
-            `${Math.round(
-                this.scene.scale.height *
-                    LAYOUT_POSITIONS.INSTRUCTIONS.FONT_SIZE_PERCENT
-            )}px`
-        );
-
-        console.log(
-            "[UIManager] Architecture demo created with character avatars"
-        );
-    }
-
-    /**
-     * Clean up all managed UI components
-     */
-    public destroy(): void {
-        // Destroy all demo components
-        this.demoComponents.forEach((component) => {
-            component.destroy();
-        });
-        this.demoComponents.clear();
-
-        // Destroy modal
-        if (this.modal) {
-            this.modal.destroy();
-            this.modal = undefined;
-        }
-
-        console.log("[UIManager] Destroyed");
-    }
+    console.log("[UIManager] Destroyed");
+  }
 }

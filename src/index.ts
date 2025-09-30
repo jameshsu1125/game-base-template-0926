@@ -11,21 +11,20 @@ const RESTART_TIME_THRESHOLD = 2000;
 listenMessagesForChangingAssets();
 
 function scheduleGameRestart() {
-    if (restartTimeout) {
-        clearTimeout(restartTimeout);
-    }
+  if (restartTimeout) {
+    clearTimeout(restartTimeout);
+  }
 
-    restartTimeout = setTimeout(() => {
-        game.destroy(true);
-        game = new Phaser.Game(PHASER_CONFIG);
-    }, RESTART_TIME_THRESHOLD);
+  restartTimeout = setTimeout(() => {
+    game.destroy(true);
+    game = new Phaser.Game(PHASER_CONFIG);
+  }, RESTART_TIME_THRESHOLD);
 }
 
 function listenMessagesForChangingAssets() {
-    window.addEventListener("message", (event) => {
-        if (!game) return;
+  window.addEventListener("message", (event) => {
+    if (!game) return;
 
-        handleReceiveAssetChunk(event, scheduleGameRestart);
-    });
+    handleReceiveAssetChunk(event, scheduleGameRestart);
+  });
 }
-
