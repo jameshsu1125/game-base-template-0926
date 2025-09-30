@@ -1,3 +1,4 @@
+// fetch code from https://github.com/rembound/Match-3-Game-HTML5/tree/master
 import Match3Manager from "src/managers/match3/manager";
 import {
   Cluster,
@@ -11,6 +12,7 @@ import {
 } from "./types";
 
 export default class Match3Core {
+  private scene: Phaser.Scene;
   private canvas: HTMLCanvasElement;
   private manager: Match3Manager;
 
@@ -36,8 +38,6 @@ export default class Match3Core {
     status: GameState.INIT,
     time: {
       last: 0,
-      fpsTime: 0,
-      fps: 0,
       count: 0,
     },
     animation: {
@@ -64,11 +64,18 @@ export default class Match3Core {
   private currentMove: Move = { column1: 0, row1: 0, column2: 0, row2: 0 };
 
   // Features
-  private showMoves: boolean = false;
+  private showMoves: boolean = true;
   private aiBot: boolean = false;
   private gameOver: boolean = false;
 
-  constructor(canvas: HTMLCanvasElement, match3Manager: Match3Manager) {
+  private tileSeriesIndex: number = 0;
+
+  constructor(
+    scene: Phaser.Scene,
+    match3Manager: Match3Manager,
+    canvas: HTMLCanvasElement
+  ) {
+    this.scene = scene;
     this.canvas = canvas;
     this.manager = match3Manager;
 
@@ -86,12 +93,94 @@ export default class Match3Core {
     this.init();
   }
 
+  private onPointerDown(pointer: Phaser.Input.Pointer) {
+    const { downX, downY } = pointer;
+    const pos = { x: downX, y: downY };
+
+    if (!this.state.isDrag) {
+      const mt = this.getMouseTile(pos);
+
+      if (mt.valid) {
+        let swapped = false;
+        if (this.config.selected.selected) {
+          if (
+            mt.x === this.config.selected.column &&
+            mt.y === this.config.selected.row
+          ) {
+            this.config.selected.selected = false;
+            this.state.isDrag = true;
+            return;
+          } else if (
+            this.canSwap(
+              mt.x,
+              mt.y,
+              this.config.selected.column,
+              this.config.selected.row
+            )
+          ) {
+            this.mouseSwap(
+              mt.x,
+              mt.y,
+              this.config.selected.column,
+              this.config.selected.row
+            );
+            swapped = true;
+          }
+        }
+
+        if (!swapped) {
+          this.config.selected.column = mt.x;
+          this.config.selected.row = mt.y;
+          this.config.selected.selected = true;
+        }
+      } else {
+        this.config.selected.selected = false;
+      }
+
+      this.state.isDrag = true;
+    }
+  }
+
+  private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    const pos = { x: pointer.x, y: pointer.y };
+
+    if (this.state.isDrag && this.config.selected.selected) {
+      const mt = this.getMouseTile(pos);
+      if (mt.valid) {
+        if (
+          this.canSwap(
+            mt.x,
+            mt.y,
+            this.config.selected.column,
+            this.config.selected.row
+          )
+        ) {
+          this.mouseSwap(
+            mt.x,
+            mt.y,
+            this.config.selected.column,
+            this.config.selected.row
+          );
+        }
+      }
+    }
+  }
+
+  private onPointerUp(): void {
+    this.state.isDrag = false;
+  }
+
   private init(): void {
     // Add mouse events
     this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
     this.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
     this.canvas.addEventListener("mouseout", this.onMouseOut.bind(this));
+
+    this.scene.input.on("pointerdown", this.onPointerDown, this);
+    this.scene.input.on("pointermove", this.onPointerMove, this);
+    this.scene.input.on("pointerup", this.onPointerUp, this);
+    this.scene.input.on("pointerout", this.onPointerUp, this);
 
     const { width, height } = this.canvas;
     this.config.tile.width = width / this.config.columns;
@@ -101,7 +190,11 @@ export default class Match3Core {
     for (let i = 0; i < this.config.columns; i++) {
       this.config.tile.data[i] = [];
       for (let j = 0; j < this.config.rows; j++) {
-        this.config.tile.data[i][j] = { type: 0, shift: 0 };
+        this.config.tile.data[i][j] = {
+          type: 0,
+          shift: 0,
+          name: `t${this.tileSeriesIndex++}`,
+        };
       }
     }
 
@@ -121,8 +214,6 @@ export default class Match3Core {
   private update(delta: number): void {
     const dt = (delta - this.state.time.last) / 1000;
     this.state.time.last = delta;
-
-    this.updateFps(dt);
 
     if (this.state.status === GameState.READY) {
       // Game is ready for player input
@@ -214,31 +305,9 @@ export default class Match3Core {
     }
   }
 
-  private updateFps(dt: number): void {
-    if (this.state.time.fpsTime > 0.25) {
-      this.state.time.fps = Math.round(
-        this.state.time.count / this.state.time.fpsTime
-      );
-      this.state.time.fpsTime = 0;
-      this.state.time.count = 0;
-    }
-
-    this.state.time.fpsTime += dt;
-    this.state.time.count++;
-  }
-
-  private drawCenterText(
-    text: string,
-    x: number,
-    y: number,
-    width: number
-  ): void {
-    const textDim = this.context.measureText(text);
-    this.context.fillText(text, x + (width - textDim.width) / 2, y);
-  }
-
   private render(): void {
     // Draw level background
+    // gap
     const levelWidth = this.config.columns * this.config.tile.width;
     const levelHeight = this.config.rows * this.config.tile.height;
     this.context.fillStyle = "#000000";
@@ -262,28 +331,17 @@ export default class Match3Core {
 
     // Game Over overlay
     if (this.gameOver) {
-      this.context.fillStyle = "rgba(0, 0, 0, 0.8)";
-      this.context.fillRect(
-        this.config.x,
-        this.config.y,
-        levelWidth,
-        levelHeight
-      );
-
-      this.context.fillStyle = "#ffffff";
-      this.context.font = "24px Verdana";
-      this.drawCenterText(
-        "Game Over!",
-        this.config.x,
-        this.config.y + levelHeight / 2 + 10,
-        levelWidth
-      );
+      this.manager.gameOver();
     }
   }
 
   private renderTiles(): void {
+    this.manager.hideAllTiles();
+
     for (let i = 0; i < this.config.columns; i++) {
       for (let j = 0; j < this.config.rows; j++) {
+        const name = this.config.tile.data[i][j].name;
+
         const shift = this.config.tile.data[i][j].shift;
         const coord = this.getTileCoordinate(
           i,
@@ -294,7 +352,7 @@ export default class Match3Core {
 
         if (this.config.tile.data[i][j].type >= 0) {
           const col = this.tileColors[this.config.tile.data[i][j].type];
-          this.drawTile(coord.x, coord.y, col[0], col[1], col[2]);
+          this.drawTile(coord.x, coord.y, col[0], col[1], col[2], name);
         }
 
         if (this.config.selected.selected) {
@@ -302,7 +360,8 @@ export default class Match3Core {
             this.config.selected.column === i &&
             this.config.selected.row === j
           ) {
-            this.drawTile(coord.x, coord.y, 255, 0, 0);
+            // TODO: Draw selection
+            this.drawTile(coord.x, coord.y, 255, 0, 0, name);
           }
         }
       }
@@ -352,15 +411,47 @@ export default class Match3Core {
             .type
         ];
 
-      this.drawTile(coord1.x, coord1.y, 0, 0, 0);
-      this.drawTile(coord2.x, coord2.y, 0, 0, 0);
+      const name =
+        this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
+          .name;
+
+      this.drawTile(coord1.x, coord1.y, 0, 0, 0, name);
+      this.drawTile(coord2.x, coord2.y, 0, 0, 0, name);
 
       if (this.state.animation.state === 2) {
-        this.drawTile(coord1shift.x, coord1shift.y, col1[0], col1[1], col1[2]);
-        this.drawTile(coord2shift.x, coord2shift.y, col2[0], col2[1], col2[2]);
+        this.drawTile(
+          coord1shift.x,
+          coord1shift.y,
+          col1[0],
+          col1[1],
+          col1[2],
+          name
+        );
+        this.drawTile(
+          coord2shift.x,
+          coord2shift.y,
+          col2[0],
+          col2[1],
+          col2[2],
+          name
+        );
       } else {
-        this.drawTile(coord2shift.x, coord2shift.y, col2[0], col2[1], col2[2]);
-        this.drawTile(coord1shift.x, coord1shift.y, col1[0], col1[1], col1[2]);
+        this.drawTile(
+          coord2shift.x,
+          coord2shift.y,
+          col2[0],
+          col2[1],
+          col2[2],
+          name
+        );
+        this.drawTile(
+          coord1shift.x,
+          coord1shift.y,
+          col1[0],
+          col1[1],
+          col1[2],
+          name
+        );
       }
     }
   }
@@ -381,8 +472,11 @@ export default class Match3Core {
     y: number,
     r: number,
     g: number,
-    b: number
+    b: number,
+    name: string
   ): void {
+    this.manager.drawTile(x, y, r, g, b, name);
+
     this.context.fillStyle = `rgb(${r},${g},${b})`;
     this.context.fillRect(
       x + 2,

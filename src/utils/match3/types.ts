@@ -1,5 +1,6 @@
 // 類型定義
 export interface Tile {
+  name: string;
   type: number;
   shift: number;
 }
@@ -27,8 +28,6 @@ export interface SelectedTile {
 }
 
 export interface TConfig {
-  x: number;
-  y: number;
   columns: number;
   rows: number;
   tile: { width: number; height: number; data: Tile[][] };
@@ -61,8 +60,6 @@ export type TState = {
   status: GameState;
   time: {
     last: number;
-    fpsTime: number;
-    fps: number;
     count: number;
   };
   animation: {
