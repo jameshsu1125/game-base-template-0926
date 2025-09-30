@@ -9,6 +9,8 @@ import {
   AppEvents,
   emitAppEvent,
 } from "../services/event-bus/app-events.constants";
+import Match3Core from "../utils/match3/core";
+import Match3Manager from "./match3/manager";
 
 /**
  * Simplified UI manager for architecture demonstration
@@ -332,7 +334,14 @@ export default class UIManager {
     console.log("[UIManager] Architecture demo created with character avatars");
   }
 
-  public createMatch3() {}
+  public createMatch3() {
+    const match3Manager = new Match3Manager();
+
+    const match3 = new Match3Core(
+      document.getElementById("gameCanvas") as HTMLCanvasElement,
+      match3Manager
+    );
+  }
 
   /**
    * Clean up all managed UI components

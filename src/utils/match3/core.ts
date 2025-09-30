@@ -1,3 +1,4 @@
+import Match3Manager from "src/managers/match3/manager";
 import {
   Cluster,
   GameState,
@@ -11,6 +12,8 @@ import {
 
 export default class Match3Core {
   private canvas: HTMLCanvasElement;
+  private manager: Match3Manager;
+
   private context: CanvasRenderingContext2D;
   private score: number = 0;
 
@@ -65,10 +68,12 @@ export default class Match3Core {
   private aiBot: boolean = false;
   private gameOver: boolean = false;
 
-  constructor(canvasId: string) {
-    const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  constructor(canvas: HTMLCanvasElement, match3Manager: Match3Manager) {
+    this.canvas = canvas;
+    this.manager = match3Manager;
+
     if (!canvas) {
-      throw new Error(`Canvas element with id "${canvasId}" not found`);
+      throw new Error(`Canvas element not found`);
     }
 
     this.canvas = canvas;

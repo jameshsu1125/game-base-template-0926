@@ -1,47 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Vite + TS</title>
-    </head>
-    <body>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-            :root {
-                --background-icon-url: url("_ASSETS_/icon.png");
-            }
-        </style>
-        <link rel="stylesheet" href="_ASSETS_/loading-styles.css" />
-        <div id="background-container">
-            <div class="background-blur"></div>
+  <head>
+    <title>Vite + TS</title>
+  </head>
+  <body>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --background-icon-url: url("_ASSETS_/icon.png");
+      }
+    </style>
+    <link rel="stylesheet" href="_ASSETS_/loading-styles.css" />
+    <div id="background-container">
+      <div class="background-blur"></div>
+    </div>
+    <div id="loading-container">
+      <div class="loading-content">
+        <img class="icon" src="_ASSETS_/icon.png" />
+        <div class="game-title">Age of Empires</div>
+        <div class="progress-outer">
+          <div class="progress-track"></div>
+          <div class="progress-inner"></div>
         </div>
-        <div id="loading-container">
-            <div class="loading-content">
-                <img class="icon" src="_ASSETS_/icon.png" />
-                <div class="game-title">Age of Empires</div>
-                <div class="progress-outer">
-                    <div class="progress-track"></div>
-                    <div class="progress-inner"></div>
-                </div>
-                <img class="appier-logo" src="_ASSETS_/appier-logo.svg" />
-            </div>
-        </div>
-        <div id="app" style="background-color: #000"></div>
-        <script>
-            // https://docs.google.com/spreadsheets/d/1idnCQSuI4D98LrY2TmBGghJhhX53fiur8K610fzuvzk/edit?gid=0#gid=0
-            window.openUrl = function () {
-                console.log("openUrl");
-            };
+        <img class="appier-logo" src="_ASSETS_/appier-logo.svg" />
+      </div>
+    </div>
+    <div id="app" style="background-color: #000"></div>
+    <canvas
+      id="gameCanvas"
+      width="320"
+      height="320"
+      style="position: fixed; right: 0; top: 0"
+    ></canvas>
+    <script>
+      // https://docs.google.com/spreadsheets/d/1idnCQSuI4D98LrY2TmBGghJhhX53fiur8K610fzuvzk/edit?gid=0#gid=0
+      window.openUrl = function () {
+        console.log("openUrl");
+      };
 
-            window.openStoreUrl = function () {
-                console.log("openStoreUrl");
-            };
+      window.openStoreUrl = function () {
+        console.log("openStoreUrl");
+      };
 
-            // Game Start
-            window.openStoreUrl();
-        </script>
-        <script type="module" src="/src/index.ts"></script>
-        ${beacon1}
-    </body>
+      // Game Start
+      window.openStoreUrl();
+    </script>
+    <script type="module" src="/src/index.ts"></script>
+    ${beacon1}
+  </body>
 </html>
-
