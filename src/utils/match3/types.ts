@@ -41,6 +41,7 @@ export interface Cluster {
   row: number;
   length: number;
   horizontal: boolean;
+  is2x2?: boolean; // 標記是否為 2x2 群集
 }
 
 export interface Move {

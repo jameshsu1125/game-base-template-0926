@@ -304,7 +304,6 @@ export default class Match3Core {
 
   private render(): void {
     // Draw level background
-    // gap
     const levelWidth = this.config.columns * this.config.tile.width;
     const levelHeight = this.config.rows * this.config.tile.height;
     this.context.fillStyle = "#000000";
@@ -491,20 +490,30 @@ export default class Match3Core {
     for (const cluster of this.clusters) {
       const coord = this.getTileCoordinate(cluster.column, cluster.row, 0, 0);
 
-      if (cluster.horizontal) {
+      if (cluster.is2x2) {
+        // 為 2x2 群集繪製特殊標記（正方形邊框）
+        this.context.strokeStyle = "#ff00ff"; // 紫色邊框表示 2x2
+        this.context.lineWidth = 3;
+        this.context.strokeRect(
+          coord.x,
+          coord.y,
+          this.config.tile.width * 2,
+          this.config.tile.height * 2
+        );
+      } else if (cluster.horizontal) {
         this.context.fillStyle = "#00ff00";
         this.context.fillRect(
           coord.x + this.config.tile.width / 2,
           coord.y + this.config.tile.height / 2,
           (cluster.length - 1) * this.config.tile.width,
-          0
+          8
         );
       } else {
         this.context.fillStyle = "#0000ff";
         this.context.fillRect(
           coord.x + this.config.tile.width / 2,
           coord.y + this.config.tile.height / 2,
-          0,
+          8,
           (cluster.length - 1) * this.config.tile.height
         );
       }
@@ -642,6 +651,39 @@ export default class Match3Core {
         }
       }
     }
+
+    // Find 2x2 clusters
+    this.find2x2Clusters();
+  }
+
+  /**
+   * 檢測 2x2 群集
+   */
+  private find2x2Clusters(): void {
+    for (let i = 0; i < this.config.columns - 1; i++) {
+      for (let j = 0; j < this.config.rows - 1; j++) {
+        const topLeft = this.config.tile.data[i][j].type;
+        const topRight = this.config.tile.data[i + 1][j].type;
+        const bottomLeft = this.config.tile.data[i][j + 1].type;
+        const bottomRight = this.config.tile.data[i + 1][j + 1].type;
+
+        // 檢查是否所有四個方塊都是相同顏色且不是空的(-1)
+        if (
+          topLeft !== -1 &&
+          topLeft === topRight &&
+          topLeft === bottomLeft &&
+          topLeft === bottomRight
+        ) {
+          this.clusters.push({
+            column: i,
+            row: j,
+            length: 4, // 2x2 有 4 個方塊
+            horizontal: true, // 對於 2x2，我們可以設為 true
+            is2x2: true,
+          });
+        }
+      }
+    }
   }
 
   private findMoves(): void {
@@ -681,15 +723,25 @@ export default class Match3Core {
   ): void {
     for (let i = 0; i < this.clusters.length; i++) {
       const cluster = this.clusters[i];
-      let colOffset = 0;
-      let rowOffset = 0;
-      for (let j = 0; j < cluster.length; j++) {
-        func(i, cluster.column + colOffset, cluster.row + rowOffset, cluster);
 
-        if (cluster.horizontal) {
-          colOffset++;
-        } else {
-          rowOffset++;
+      if (cluster.is2x2) {
+        // 處理 2x2 群集：四個位置
+        func(i, cluster.column, cluster.row, cluster); // 左上
+        func(i, cluster.column + 1, cluster.row, cluster); // 右上
+        func(i, cluster.column, cluster.row + 1, cluster); // 左下
+        func(i, cluster.column + 1, cluster.row + 1, cluster); // 右下
+      } else {
+        // 處理線性群集（水平或垂直）
+        let colOffset = 0;
+        let rowOffset = 0;
+        for (let j = 0; j < cluster.length; j++) {
+          func(i, cluster.column + colOffset, cluster.row + rowOffset, cluster);
+
+          if (cluster.horizontal) {
+            colOffset++;
+          } else {
+            rowOffset++;
+          }
         }
       }
     }
