@@ -159,8 +159,8 @@ export default class Match3Core {
 
   private getPointerPos(e: Phaser.Input.Pointer): Position {
     return {
-      x: (e.x - MATCH3_CONFIG.x) / this.scene.scale.displayScale.x,
-      y: (e.y - MATCH3_CONFIG.y) / this.scene.scale.displayScale.y,
+      x: e.x - MATCH3_CONFIG.x,
+      y: e.y - MATCH3_CONFIG.y,
     };
   }
 
@@ -170,9 +170,17 @@ export default class Match3Core {
     this.scene.input.on("pointerup", this.onPointerUp, this);
     this.scene.input.on("pointerout", this.onPointerUp, this);
 
-    const { width, height } = this.canvas;
-    this.config.tile.width = width / this.config.columns;
-    this.config.tile.height = height / this.config.rows;
+    this.canvas.width = this.config.columns * this.config.tile.width;
+    this.canvas.height = this.config.rows * this.config.tile.height;
+    this.canvas.style.width = `${
+      this.canvas.width * this.scene.scale.displayScale.x
+    }px`;
+    this.canvas.style.height = `${
+      this.canvas.height * this.scene.scale.displayScale.y
+    }px`;
+    this.context.imageSmoothingEnabled = false;
+    const scale = 100 / this.canvas.width;
+    this.canvas.style.transform = `scale(${scale})`;
 
     // Initialize the two-dimensional tile array
     for (let i = 0; i < this.config.columns; i++) {
@@ -470,7 +478,6 @@ export default class Match3Core {
     upper: boolean = false
   ): void {
     this.manager.drawTile({ x, y, r, g, b, name, upper });
-
     this.context.fillStyle = `rgb(${r},${g},${b})`;
     this.context.fillRect(
       x,

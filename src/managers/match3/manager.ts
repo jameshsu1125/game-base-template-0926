@@ -54,8 +54,8 @@ export default class Match3Manager {
       this.state[name].graphics.clear();
       graphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
       graphics.fillRect(
-        MATCH3_CONFIG.x + x * this.scene.scale.displayScale.x,
-        MATCH3_CONFIG.y + y * this.scene.scale.displayScale.y,
+        MATCH3_CONFIG.x + x,
+        MATCH3_CONFIG.y + y,
         MATCH3_CONFIG.width,
         MATCH3_CONFIG.height
       );

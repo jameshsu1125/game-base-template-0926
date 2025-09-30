@@ -13,7 +13,7 @@ export const MATCH3_CONFIG = {
   y: 100,
   rows: 8,
   cols: 8,
-  width: 100,
-  height: 100,
+  width: 120,
+  height: 120,
   transitionDuration: 0.3,
 };
