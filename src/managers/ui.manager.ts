@@ -335,7 +335,7 @@ export default class UIManager {
   }
 
   public createMatch3() {
-    const match3Manager = new Match3Manager();
+    const match3Manager = new Match3Manager(this.scene);
 
     const match3 = new Match3Core(
       document.getElementById("gameCanvas") as HTMLCanvasElement,

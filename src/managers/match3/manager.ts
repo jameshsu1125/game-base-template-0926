@@ -1,3 +1,6 @@
 export default class Match3Manager {
-  constructor() {}
+  private scene: Phaser.Scene;
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+  }
 }
