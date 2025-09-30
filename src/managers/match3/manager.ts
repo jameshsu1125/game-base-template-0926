@@ -18,6 +18,7 @@ type TDrawTileProps = {
   g: number;
   b: number;
   name: string;
+  upper?: boolean;
 };
 
 export default class Match3Manager {
@@ -33,7 +34,6 @@ export default class Match3Manager {
   public gameOver() {
     if (this.status === "gameOver") return;
     this.status = "gameOver";
-
     console.log("Game Over");
   }
 
@@ -43,26 +43,28 @@ export default class Match3Manager {
     });
   }
 
+  public addScore(count: number) {
+    console.log("Add Score", count);
+  }
+
   public drawTile(props: TDrawTileProps) {
-    const { x, y, r, g, b, name } = props;
+    const { x, y, r, g, b, name, upper } = props;
 
     const draw = (graphics: Phaser.GameObjects.Graphics) => {
       this.state[name].graphics.clear();
       graphics.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
       graphics.fillRect(
-        MATCH3_CONFIG.x + x,
-        MATCH3_CONFIG.y + y,
+        MATCH3_CONFIG.x + x * this.scene.scale.displayScale.x,
+        MATCH3_CONFIG.y + y * this.scene.scale.displayScale.y,
         MATCH3_CONFIG.width,
         MATCH3_CONFIG.height
       );
+      graphics.setDepth(upper ? 1 : 2);
     };
 
     if (this.state[name]) {
       // 已經畫過了
-      this.state[name].graphics.x =
-        (MATCH3_CONFIG.x + x) * this.scene.scale.displayScale.x;
-      this.state[name].graphics.y =
-        (MATCH3_CONFIG.y + y) * this.scene.scale.displayScale.y;
+
       this.state[name].r = r;
       this.state[name].g = g;
       this.state[name].b = b;

@@ -9,10 +9,11 @@ export const MATCH3_RGB_COLORS: [number, number, number][] = [
 ];
 
 export const MATCH3_CONFIG = {
-  x: 10,
-  y: 10,
+  x: 100,
+  y: 100,
   rows: 8,
   cols: 8,
   width: 100,
   height: 100,
+  transitionDuration: 0.3,
 };

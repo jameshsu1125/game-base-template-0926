@@ -40,15 +40,8 @@ export default class Match3Core {
   private state: TState = {
     isDrag: false,
     status: GameState.INIT,
-    time: {
-      last: 0,
-      count: 0,
-    },
-    animation: {
-      state: 0,
-      time: 0,
-      total: 0.3,
-    },
+    time: { last: 0, count: 0 },
+    animation: { state: 0, time: 0, total: MATCH3_CONFIG.transitionDuration },
   };
 
   // Tile colors in RGB
@@ -138,7 +131,6 @@ export default class Match3Core {
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
     const pos = this.getPointerPos(pointer);
-
     if (this.state.isDrag && this.config.selected.selected) {
       const mt = this.getMouseTile(pos);
       if (mt.valid) {
@@ -167,18 +159,12 @@ export default class Match3Core {
 
   private getPointerPos(e: Phaser.Input.Pointer): Position {
     return {
-      x: e.x - MATCH3_CONFIG.x,
-      y: e.y - MATCH3_CONFIG.y,
+      x: (e.x - MATCH3_CONFIG.x) / this.scene.scale.displayScale.x,
+      y: (e.y - MATCH3_CONFIG.y) / this.scene.scale.displayScale.y,
     };
   }
 
   private init(): void {
-    // Add mouse events
-    this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
-    this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
-    this.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
-    this.canvas.addEventListener("mouseout", this.onMouseOut.bind(this));
-
     this.scene.input.on("pointerdown", this.onPointerDown, this);
     this.scene.input.on("pointermove", this.onPointerMove, this);
     this.scene.input.on("pointerup", this.onPointerUp, this);
@@ -248,6 +234,7 @@ export default class Match3Core {
             // Add points to score
             for (const cluster of this.clusters) {
               this.score += 100 * (cluster.length - 2);
+              this.manager.addScore(cluster.length - 2);
             }
 
             this.removeClusters();
@@ -413,12 +400,15 @@ export default class Match3Core {
             .type
         ];
 
-      const name =
+      const name1 =
         this.config.tile.data[this.currentMove.column1][this.currentMove.row1]
           .name;
+      const name2 =
+        this.config.tile.data[this.currentMove.column2][this.currentMove.row2]
+          .name;
 
-      this.drawTile(coord1.x, coord1.y, 0, 0, 0, name);
-      this.drawTile(coord2.x, coord2.y, 0, 0, 0, name);
+      this.drawTile(coord1.x, coord1.y, 0, 0, 0, name1);
+      this.drawTile(coord2.x, coord2.y, 0, 0, 0, name1);
 
       if (this.state.animation.state === 2) {
         this.drawTile(
@@ -427,7 +417,8 @@ export default class Match3Core {
           col1[0],
           col1[1],
           col1[2],
-          name
+          name2,
+          true
         );
         this.drawTile(
           coord2shift.x,
@@ -435,7 +426,7 @@ export default class Match3Core {
           col2[0],
           col2[1],
           col2[2],
-          name
+          name1
         );
       } else {
         this.drawTile(
@@ -444,7 +435,7 @@ export default class Match3Core {
           col2[0],
           col2[1],
           col2[2],
-          name
+          name2
         );
         this.drawTile(
           coord1shift.x,
@@ -452,7 +443,7 @@ export default class Match3Core {
           col1[0],
           col1[1],
           col1[2],
-          name
+          name1
         );
       }
     }
@@ -475,9 +466,10 @@ export default class Match3Core {
     r: number,
     g: number,
     b: number,
-    name: string
+    name: string,
+    upper: boolean = false
   ): void {
-    this.manager.drawTile({ x, y, r, g, b, name });
+    this.manager.drawTile({ x, y, r, g, b, name, upper });
 
     this.context.fillStyle = `rgb(${r},${g},${b})`;
     this.context.fillRect(
@@ -700,7 +692,6 @@ export default class Match3Core {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.loopClusters((_index, column, row, _cluster) => {
       this.config.tile.data[column][row].type = -1;
-      // console.log(indexedDB, _cluster);
     });
 
     for (let i = 0; i < this.config.columns; i++) {
@@ -770,98 +761,6 @@ export default class Match3Core {
     this.state.animation.state = 2;
     this.state.animation.time = 0;
     this.state.status = GameState.RESOLVE;
-  }
-
-  private onMouseMove(e: MouseEvent): void {
-    const pos = this.getMousePos(this.canvas, e);
-
-    if (this.state.isDrag && this.config.selected.selected) {
-      const mt = this.getMouseTile(pos);
-      if (mt.valid) {
-        if (
-          this.canSwap(
-            mt.x,
-            mt.y,
-            this.config.selected.column,
-            this.config.selected.row
-          )
-        ) {
-          this.mouseSwap(
-            mt.x,
-            mt.y,
-            this.config.selected.column,
-            this.config.selected.row
-          );
-        }
-      }
-    }
-  }
-
-  private onMouseDown(e: MouseEvent): void {
-    const pos = this.getMousePos(this.canvas, e);
-
-    if (!this.state.isDrag) {
-      const mt = this.getMouseTile(pos);
-
-      if (mt.valid) {
-        let swapped = false;
-        if (this.config.selected.selected) {
-          if (
-            mt.x === this.config.selected.column &&
-            mt.y === this.config.selected.row
-          ) {
-            this.config.selected.selected = false;
-            this.state.isDrag = true;
-            return;
-          } else if (
-            this.canSwap(
-              mt.x,
-              mt.y,
-              this.config.selected.column,
-              this.config.selected.row
-            )
-          ) {
-            this.mouseSwap(
-              mt.x,
-              mt.y,
-              this.config.selected.column,
-              this.config.selected.row
-            );
-            swapped = true;
-          }
-        }
-
-        if (!swapped) {
-          this.config.selected.column = mt.x;
-          this.config.selected.row = mt.y;
-          this.config.selected.selected = true;
-        }
-      } else {
-        this.config.selected.selected = false;
-      }
-
-      this.state.isDrag = true;
-    }
-  }
-
-  private onMouseUp(): void {
-    this.state.isDrag = false;
-  }
-
-  private onMouseOut(): void {
-    this.state.isDrag = false;
-  }
-
-  private getMousePos(canvas: HTMLCanvasElement, e: MouseEvent): Position {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.round(
-        ((e.clientX - rect.left) / (rect.right - rect.left)) * canvas.width
-      ),
-      y: Math.round(
-        ((e.clientY - rect.top) / (rect.bottom - rect.top)) * canvas.height
-      ),
-    };
   }
 
   // Public methods for external control
