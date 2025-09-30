@@ -54,7 +54,7 @@ export default class Match3Core {
 
   // Features
   private showMoves: boolean = true;
-  private aiBot: boolean = false;
+  private aiBot: boolean = true;
   private gameOver: boolean = false;
 
   private tileSeriesIndex: number = 0;
@@ -179,7 +179,7 @@ export default class Match3Core {
       this.canvas.height * this.scene.scale.displayScale.y
     }px`;
     this.context.imageSmoothingEnabled = false;
-    const scale = 100 / this.canvas.width;
+    const scale = 120 / this.canvas.width;
     this.canvas.style.transform = `scale(${scale})`;
 
     // Initialize the two-dimensional tile array
@@ -584,40 +584,16 @@ export default class Match3Core {
   private findClusters(): void {
     this.clusters = [];
 
-    // Find horizontal clusters
-    for (let j = 0; j < this.config.rows; j++) {
-      let matchLength = 1;
-      for (let i = 0; i < this.config.columns; i++) {
-        let checkCluster = false;
+    // Find 2x2 clusters
+    this.find2x2Clusters();
+    // Find L-shaped clusters
+    this.findLShapedClusters();
 
-        if (i === this.config.columns - 1) {
-          checkCluster = true;
-        } else {
-          if (
-            this.config.tile.data[i][j].type ===
-              this.config.tile.data[i + 1][j].type &&
-            this.config.tile.data[i][j].type !== -1
-          ) {
-            matchLength += 1;
-          } else {
-            checkCluster = true;
-          }
-        }
+    this.findHorizontalClusters();
+    this.findVerticalClusters();
+  }
 
-        if (checkCluster) {
-          if (matchLength >= 3) {
-            this.clusters.push({
-              column: i + 1 - matchLength,
-              row: j,
-              length: matchLength,
-              horizontal: true,
-            });
-          }
-          matchLength = 1;
-        }
-      }
-    }
-
+  private findVerticalClusters(): void {
     // Find vertical clusters
     for (let i = 0; i < this.config.columns; i++) {
       let matchLength = 1;
@@ -651,9 +627,130 @@ export default class Match3Core {
         }
       }
     }
+  }
 
-    // Find 2x2 clusters
-    this.find2x2Clusters();
+  private findHorizontalClusters(): void {
+    // Find horizontal clusters
+    for (let j = 0; j < this.config.rows; j++) {
+      let matchLength = 1;
+      for (let i = 0; i < this.config.columns; i++) {
+        let checkCluster = false;
+
+        if (i === this.config.columns - 1) {
+          checkCluster = true;
+        } else {
+          if (
+            this.config.tile.data[i][j].type ===
+              this.config.tile.data[i + 1][j].type &&
+            this.config.tile.data[i][j].type !== -1
+          ) {
+            matchLength += 1;
+          } else {
+            checkCluster = true;
+          }
+        }
+
+        if (checkCluster) {
+          if (matchLength >= 3) {
+            this.clusters.push({
+              column: i + 1 - matchLength,
+              row: j,
+              length: matchLength,
+              horizontal: true,
+            });
+          }
+          matchLength = 1;
+        }
+      }
+    }
+  }
+
+  private findLShapedClusters(): void {
+    for (let i = 0; i < this.config.columns - 1; i++) {
+      for (let j = 0; j < this.config.rows - 2; j++) {
+        const t = this.config.tile.data[i][j].type;
+        if (
+          t !== -1 &&
+          t === this.config.tile.data[i][j + 1].type &&
+          t === this.config.tile.data[i][j + 2].type &&
+          t === this.config.tile.data[i + 1][j + 2].type &&
+          t === this.config.tile.data[i + 1][j + 1].type
+        ) {
+          this.clusters.push({
+            column: i,
+            row: j,
+            length: 5,
+            horizontal: false,
+            isLShape: true,
+            shape: "L-down-right",
+          });
+        }
+      }
+    }
+    for (let i = 0; i < this.config.columns - 2; i++) {
+      for (let j = 0; j < this.config.rows - 1; j++) {
+        const t = this.config.tile.data[i][j].type;
+        if (
+          t !== -1 &&
+          t === this.config.tile.data[i + 1][j].type &&
+          t === this.config.tile.data[i + 2][j].type &&
+          t === this.config.tile.data[i + 2][j + 1].type &&
+          t === this.config.tile.data[i + 1][j + 1].type
+        ) {
+          this.clusters.push({
+            column: i,
+            row: j,
+            length: 5,
+            horizontal: true,
+            isLShape: true,
+            shape: "L-right-down",
+          });
+        }
+      }
+    }
+    // Mirror L shapes
+    for (let i = 1; i < this.config.columns; i++) {
+      for (let j = 0; j < this.config.rows - 2; j++) {
+        const t = this.config.tile.data[i][j].type;
+        if (
+          t !== -1 &&
+          t === this.config.tile.data[i][j + 1].type &&
+          t === this.config.tile.data[i][j + 2].type &&
+          t === this.config.tile.data[i - 1][j + 2].type &&
+          t === this.config.tile.data[i - 1][j + 1].type
+        ) {
+          this.clusters.push({
+            column: i - 1,
+            row: j,
+            length: 5,
+            horizontal: false,
+            isLShape: true,
+            shape: "L-down-left",
+          });
+        }
+      }
+    }
+    for (let i = 0; i < this.config.columns - 2; i++) {
+      for (let j = 1; j < this.config.rows; j++) {
+        const t = this.config.tile.data[i][j].type;
+        if (
+          t !== -1 &&
+          t === this.config.tile.data[i + 1][j].type &&
+          t === this.config.tile.data[i + 2][j].type &&
+          t === this.config.tile.data[i + 2][j - 1].type &&
+          t === this.config.tile.data[i + 1][j - 1].type
+        ) {
+          this.clusters.push({
+            column: i,
+            row: j - 1,
+            length: 5,
+            horizontal: true,
+            isLShape: true,
+            shape: "L-right-up",
+          });
+        }
+      }
+    }
   }
 
   /**
@@ -723,6 +820,8 @@ export default class Match3Core {
   ): void {
     for (let i = 0; i < this.clusters.length; i++) {
       const cluster = this.clusters[i];
+
+      console.log(cluster.length);
 
       if (cluster.is2x2) {
         // 處理 2x2 群集：四個位置

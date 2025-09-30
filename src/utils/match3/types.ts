@@ -42,6 +42,8 @@ export interface Cluster {
   length: number;
   horizontal: boolean;
   is2x2?: boolean; // 標記是否為 2x2 群集
+  isLShape?: boolean; // 標記是否為 L 形狀群集
+  shape?: string; // 標記 L 形狀的具體形狀
 }
 
 export interface Move {
