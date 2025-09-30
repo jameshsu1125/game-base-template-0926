@@ -1,0 +1,49 @@
+description: |
+    This is a match and fight puzzle game where players match 3 identical tiles to deal damage to an enemy castle/tower/object. Players solve Match-3 levels to charge up their heroes and launch attacks, directly hitting on-screen enemies (PvE or PvP). The game combines the strategy of puzzle-solving with the long-term goals of character development and base building.
+
+complex_assets:
+    - background_image:
+          prompt: You are tasked to generate a background for this merge game screenshot, make sure to copy it exactly how it looks like in the game. The image should not include any game components like buttons, text, or UI elements, just a scene suitable for a merge puzzle game background. No text inside, No game inside. Make sure the middle to bottom is just color gradient.
+          background: opaque
+          size: 1024x1536
+          placement: public/assets/background.png
+          image_generation_model: gpt-image-1
+    - player:
+          prompt: generate a character face for the user profile picture. Make sure to generate only a profile picture of the character with transparate background. Make sure the character looks like the good ones.
+          placement: public/assets/enemy-avatar.png
+          group: player
+    - boss:
+          prompt: Generate a Main angry enemy icon. This should look like a larger sized enemy from SubEnemy (or the main boss) for player to defeat. It should be either a large and full-body sized enemy or an enemy positioning on a castle/tower to defeat. Make sure to background behind the enemy is transparent, and no frames are required surrounding the emeny.
+          placement: public/assets/arch-enemy.png
+          group: boss
+    - enemy:
+          prompt: Generate a secondary angry enemy icon. This should look a smaller sized enemy from MainEnemy for player to defeat. It should be a small and full-body sized enemy or an enemy positioning on a castle/tower to defeat. Make sure to background behind the enemy is transparent, and no frames are required surrounding the emeny.
+          placement: public/assets/enemy.png
+          group: enemy
+          aspect_ratio: "300:300"
+simple_assets:
+    - itemA:
+          prompt: Generate a match game item for item type A. This should be a simple, clean game asset that represents one type of matchable item series. The type could differ by the colors, shapes, symbols. no background artifacts, simple transparent background only
+          placement: public/assets/tile1.png
+          aspect_ratio: "300:300"
+    - itemB:
+          prompt: Generate a match game item for item type B. This should be a simple, clean game asset that represents another type of matchable item series. The type could differ by the colors, shapes, symbols. no background artifacts, simple transparent background only
+          placement: public/assets/tile2.png
+          aspect_ratio: "300:300"
+    - itemC:
+          prompt: Generate a match game item for item type C. This should be a simple, clean game asset that represents another type of matchable item series. The type could differ by the colors, shapes, symbols. no background artifacts, simple transparent background only
+          placement: public/assets/tile3.png
+          aspect_ratio: "300:300"
+    - itemD:
+          prompt: Generate a match game item for item type D. This should be a simple, clean game asset that represents another type of matchable item series. The type could differ by the colors, shapes, symbols. no background artifacts, simple transparent background only
+          placement: public/assets/tile4.png
+          aspect_ratio: "300:300"
+    - itemE:
+          prompt: Generate a match game item for item type E. This should be a simple, clean game asset that represents another type of matchable item series. no background artifacts, simple transparent background only
+          placement: public/assets/tile5.png
+          aspect_ratio: "300:300"
+    - itemF:
+          prompt: Generate a match game item for item type F. This should be a simple, clean game asset that represents another type of matchable item series. no background artifacts, simple transparent background only
+          placement: public/assets/tile6.png
+          aspect_ratio: "300:300"
+

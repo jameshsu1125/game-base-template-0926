@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Node",
+        "lib": ["ESNext", "DOM"],
+        "allowJs": true,
+        "checkJs": false,
+        "outDir": "dist",
+        "rootDir": ".",
+        "strict": true,
+        "noImplicitAny": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "noEmitOnError": true,
+        "baseUrl": "."
+    },
+    "include": ["src", "commons"],
+    "exclude": ["node_modules", "dist", "public", "src/configs/ASSET_CONFIG.js"]
+}
+
