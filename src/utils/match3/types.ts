@@ -70,6 +70,6 @@ export type TState = {
   animation: {
     state: 0 | 1 | 2 | 3;
     time: number;
-    total: number;
+    readonly total: number;
   };
 };

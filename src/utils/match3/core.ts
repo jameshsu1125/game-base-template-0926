@@ -61,7 +61,7 @@ export default class Match3Core {
   private gameOver: boolean = false;
 
   private tileSeriesIndex: number = 0;
-  private specialTile: Tile[] = [];
+  private specialTile: (Tile & { col: number; row: number })[] = [];
 
   constructor(
     scene: Phaser.Scene,
@@ -84,6 +84,50 @@ export default class Match3Core {
     this.context = context;
 
     this.init();
+    window.addEventListener("keydown", (e) => {
+      e.key === "1" && (this.aiBot = true);
+      e.key === "2" && (this.aiBot = false);
+    });
+  }
+
+  private explode3x3(tile: Tile & { col: number; row: number }) {
+    const { col, row } = tile;
+    this.config.tile.data[col][row].type = -1;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const x = col + dx;
+        const y = row + dy;
+        if (
+          x >= 0 &&
+          x < this.config.columns &&
+          y >= 0 &&
+          y < this.config.rows &&
+          this.config.tile.data[x][y].type !== -1
+        ) {
+          this.config.tile.data[x][y].type = -1;
+        }
+      }
+    }
+
+    // 計算每個 tile 需要下降的距離
+    for (let i = 0; i < this.config.columns; i++) {
+      let shift = 0;
+      for (let j = this.config.rows - 1; j >= 0; j--) {
+        if (this.config.tile.data[i][j].type === -1) {
+          shift++;
+          this.config.tile.data[i][j].shift = 0;
+        } else {
+          this.config.tile.data[i][j].shift = shift;
+        }
+      }
+    }
+
+    // 設置遊戲狀態為解決中，並啟動掉落動畫
+    this.state.status = GameState.RESOLVE;
+    this.state.animation.state = 1; // 設為掉落狀態
+    this.state.animation.time = 0;
+    this.state.isDrag = false;
+    this.config.selected.selected = false;
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer) {
@@ -93,6 +137,23 @@ export default class Match3Core {
       const mt = this.getMouseTile(pos);
 
       if (mt.valid) {
+        // click special tile to activate
+        if (this.specialTile.length > 0) {
+          const activates = this.specialTile.map((tile) => {
+            if (
+              tile.type >= MATCH3_RGB_COLORS.length &&
+              tile.col === mt.x &&
+              tile.row === mt.y
+            ) {
+              this.manager.activateSpecialTile(tile);
+              this.explode3x3(tile);
+              return true;
+            }
+            return false;
+          });
+          if (activates.length) return;
+        }
+
         let swapped = false;
         if (this.config.selected.selected) {
           if (
@@ -400,6 +461,7 @@ export default class Match3Core {
         (this.state.animation.time / this.state.animation.total) * -shiftX,
         (this.state.animation.time / this.state.animation.total) * -shiftY
       );
+
       const col2 = this.getColorByType(
         this.config.tile.data[this.currentMove.column2][this.currentMove.row2]
           .type
@@ -596,8 +658,6 @@ export default class Match3Core {
     this.findClusters();
 
     while (this.clusters.length > 0) {
-      console.log(this.specialTile);
-
       this.removeClusters();
       this.shiftTiles();
       this.findClusters();
@@ -624,7 +684,11 @@ export default class Match3Core {
     for (let i = 0; i < this.config.columns; i++) {
       for (let j = 0; j < this.config.rows; j++) {
         if (this.config.tile.data[i][j].type >= MATCH3_RGB_COLORS.length) {
-          this.specialTile.push(this.config.tile.data[i][j]);
+          this.specialTile.push({
+            ...this.config.tile.data[i][j],
+            col: i,
+            row: j,
+          });
         }
       }
     }
@@ -790,9 +854,6 @@ export default class Match3Core {
     }
   }
 
-  /**
-   * 檢測 2x2 群集
-   */
   private find2x2Clusters(): void {
     for (let i = 0; i < this.config.columns - 1; i++) {
       for (let j = 0; j < this.config.rows - 1; j++) {
@@ -940,6 +1001,7 @@ export default class Match3Core {
             this.config.tile.data[cluster.column][cluster.row + 1].type =
               MATCH3_RGB_COLORS.length + 3;
           }
+          console.log("4 in a row");
           this.aiBot = false;
         }
       }

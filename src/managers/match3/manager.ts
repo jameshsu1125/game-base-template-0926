@@ -1,3 +1,4 @@
+import { Tile } from "src/utils/match3/types";
 import { MATCH3_CONFIG } from "../../configs/match3/layout.constants";
 
 type TTileData = {
@@ -45,6 +46,10 @@ export default class Match3Manager {
 
   public addScore(count: number) {
     // console.log("Add Score", count);
+  }
+
+  public activateSpecialTile(tile: Tile & { col: number; row: number }) {
+    console.log(tile);
   }
 
   public drawTile(props: TDrawTileProps) {
