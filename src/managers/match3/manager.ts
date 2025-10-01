@@ -48,8 +48,11 @@ export default class Match3Manager {
     // console.log("Add Score", count);
   }
 
-  public activateSpecialTile(tile: Tile & { col: number; row: number }) {
-    console.log(tile);
+  public activateSpecialTile(
+    tile: Tile & { col: number; row: number },
+    type?: "3x3" | "horizontal" | "vertical"
+  ) {
+    console.log(tile, type);
   }
 
   public drawTile(props: TDrawTileProps) {
