@@ -13,6 +13,7 @@ import {
   Move,
   Position,
   TConfig,
+  Tile,
   TileCoordinate,
   TState,
 } from "./types";
@@ -56,11 +57,11 @@ export default class Match3Core {
 
   // Features
   private showMoves: boolean = true;
-  private aiBot: boolean = false;
+  private aiBot: boolean = true;
   private gameOver: boolean = false;
 
   private tileSeriesIndex: number = 0;
-  private specialTile: number[] = [];
+  private specialTile: Tile[] = [];
 
   constructor(
     scene: Phaser.Scene,
@@ -465,7 +466,7 @@ export default class Match3Core {
   }
 
   private getColorByType(type: number): [number, number, number] {
-    if (type > MATCH3_RGB_COLORS.length) {
+    if (type >= MATCH3_RGB_COLORS.length) {
       return MATCH3_SPECIAL_RGB_COLORS[
         (type - MATCH3_RGB_COLORS.length) % MATCH3_SPECIAL_RGB_COLORS.length
       ];
@@ -581,7 +582,7 @@ export default class Match3Core {
       this.resolveClusters();
       this.findMoves();
 
-      if (this.moves.length > 0) {
+      if (this.moves.length > 0 && this.specialTile.length === 0) {
         done = true;
       }
     }
@@ -594,7 +595,9 @@ export default class Match3Core {
   private resolveClusters(): void {
     this.findClusters();
 
-    while (this.clusters.length > 0 || this.specialTile.length !== 0) {
+    while (this.clusters.length > 0) {
+      console.log(this.specialTile);
+
       this.removeClusters();
       this.shiftTiles();
       this.findClusters();
@@ -620,8 +623,8 @@ export default class Match3Core {
   private findSpecialTiles(): void {
     for (let i = 0; i < this.config.columns; i++) {
       for (let j = 0; j < this.config.rows; j++) {
-        if (this.config.tile.data[i][j].type > MATCH3_RGB_COLORS.length) {
-          this.specialTile.push(this.config.tile.data[i][j].type);
+        if (this.config.tile.data[i][j].type >= MATCH3_RGB_COLORS.length) {
+          this.specialTile.push(this.config.tile.data[i][j]);
         }
       }
     }
@@ -875,7 +878,7 @@ export default class Match3Core {
         func(i, cluster.column + 1, cluster.row + 1, cluster); // 右下
         // TODO: 剩下的
         this.config.tile.data[cluster.column][cluster.row + 1].type =
-          MATCH3_RGB_COLORS.length + 1;
+          MATCH3_RGB_COLORS.length;
         console.log("2x2");
         this.aiBot = false;
       } else if (cluster.isLShape) {
@@ -887,7 +890,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 2, cluster);
           this.config.tile.data[cluster.column][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 2;
+            MATCH3_RGB_COLORS.length + 1;
         } else if (cluster.shape === "L-right-down") {
           func(i, cluster.column, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row, cluster);
@@ -895,7 +898,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 2, cluster.row + 1, cluster);
           this.config.tile.data[cluster.column + 2][cluster.row].type =
-            MATCH3_RGB_COLORS.length + 2;
+            MATCH3_RGB_COLORS.length + 1;
         } else if (cluster.shape === "L-down-left") {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
@@ -903,7 +906,7 @@ export default class Match3Core {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column, cluster.row + 2, cluster);
           this.config.tile.data[cluster.column + 1][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 2;
+            MATCH3_RGB_COLORS.length + 1;
         } else if (cluster.shape === "L-right-up") {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
@@ -911,7 +914,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 2, cluster.row, cluster);
           this.config.tile.data[cluster.column + 2][cluster.row + 1].type =
-            MATCH3_RGB_COLORS.length + 2;
+            MATCH3_RGB_COLORS.length + 1;
         }
         console.log("L shape");
         this.aiBot = false;
@@ -932,10 +935,10 @@ export default class Match3Core {
         if (cluster.length === 4) {
           if (cluster.horizontal) {
             this.config.tile.data[cluster.column + 1][cluster.row].type =
-              MATCH3_RGB_COLORS.length + 3;
+              MATCH3_RGB_COLORS.length + 2;
           } else {
             this.config.tile.data[cluster.column][cluster.row + 1].type =
-              MATCH3_RGB_COLORS.length + 4;
+              MATCH3_RGB_COLORS.length + 3;
           }
           this.aiBot = false;
         }
