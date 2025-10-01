@@ -56,10 +56,11 @@ export default class Match3Core {
 
   // Features
   private showMoves: boolean = true;
-  private aiBot: boolean = true;
+  private aiBot: boolean = false;
   private gameOver: boolean = false;
 
   private tileSeriesIndex: number = 0;
+  private specialTile: number[] = [];
 
   constructor(
     scene: Phaser.Scene,
@@ -527,6 +528,20 @@ export default class Match3Core {
 
   private renderMoves(): void {
     for (const move of this.moves) {
+      if (move.column1 === move.column2 && move.row1 === move.row2) {
+        const coord = this.getTileCoordinate(move.column1, move.row1, 0, 0);
+        this.context.beginPath();
+        this.context.arc(
+          coord.x + this.config.tile.width / 2,
+          coord.y + this.config.tile.height / 2,
+          this.config.tile.width / 3,
+          0,
+          2 * Math.PI
+        );
+        this.context.strokeStyle = "#ff0000";
+        this.context.lineWidth = 3;
+        this.context.stroke();
+      }
       const coord1 = this.getTileCoordinate(move.column1, move.row1, 0, 0);
       const coord2 = this.getTileCoordinate(move.column2, move.row2, 0, 0);
 
@@ -579,7 +594,7 @@ export default class Match3Core {
   private resolveClusters(): void {
     this.findClusters();
 
-    while (this.clusters.length > 0) {
+    while (this.clusters.length > 0 || this.specialTile.length !== 0) {
       this.removeClusters();
       this.shiftTiles();
       this.findClusters();
@@ -588,6 +603,9 @@ export default class Match3Core {
 
   private findClusters(): void {
     this.clusters = [];
+    this.specialTile = [];
+
+    this.findSpecialTiles();
 
     // Find L-shaped clusters
     this.findLShapedClusters();
@@ -597,6 +615,16 @@ export default class Match3Core {
 
     this.findHorizontalClusters();
     this.findVerticalClusters();
+  }
+
+  private findSpecialTiles(): void {
+    for (let i = 0; i < this.config.columns; i++) {
+      for (let j = 0; j < this.config.rows; j++) {
+        if (this.config.tile.data[i][j].type > MATCH3_RGB_COLORS.length) {
+          this.specialTile.push(this.config.tile.data[i][j].type);
+        }
+      }
+    }
   }
 
   private findVerticalClusters(): void {
@@ -796,10 +824,10 @@ export default class Match3Core {
     for (let j = 0; j < this.config.rows; j++) {
       for (let i = 0; i < this.config.columns - 1; i++) {
         if (this.config.tile.data[i][j].type > MATCH3_RGB_COLORS.length) {
-          // TODO: special tile swap logic
           const specialTileType = this.config.tile.data[i][j].type;
-          console.log(specialTileType);
-          //  this.moves.push({ column1: i, row1: j, column2: i, row2: j });
+          if (specialTileType >= MATCH3_RGB_COLORS.length + 1) {
+            this.moves.push({ column1: i, row1: j, column2: i, row2: j });
+          }
         }
       }
     }
@@ -847,8 +875,9 @@ export default class Match3Core {
         func(i, cluster.column + 1, cluster.row + 1, cluster); // 右下
         // TODO: 剩下的
         this.config.tile.data[cluster.column][cluster.row + 1].type =
-          MATCH3_RGB_COLORS.length + 1; // 測試用
+          MATCH3_RGB_COLORS.length + 1;
         console.log("2x2");
+        this.aiBot = false;
       } else if (cluster.isLShape) {
         // 處理 L 形群集
         if (cluster.shape === "L-down-right") {
@@ -857,40 +886,35 @@ export default class Match3Core {
           func(i, cluster.column, cluster.row + 2, cluster); // 中間
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 2, cluster);
-          // TODO: 剩下的
           this.config.tile.data[cluster.column][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 2; // 測試用
+            MATCH3_RGB_COLORS.length + 2;
         } else if (cluster.shape === "L-right-down") {
           func(i, cluster.column, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 2, cluster.row, cluster); // 中間
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 2, cluster.row + 1, cluster);
-
-          // TODO: 剩下的
           this.config.tile.data[cluster.column + 2][cluster.row].type =
-            MATCH3_RGB_COLORS.length + 2; // 測試用
+            MATCH3_RGB_COLORS.length + 2;
         } else if (cluster.shape === "L-down-left") {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 2, cluster); // 中間
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column, cluster.row + 2, cluster);
-
-          // TODO: 剩下的
           this.config.tile.data[cluster.column + 1][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 2; // 測試用
+            MATCH3_RGB_COLORS.length + 2;
         } else if (cluster.shape === "L-right-up") {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 2, cluster.row + 1, cluster); // 中間
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 2, cluster.row, cluster);
-          // TODO: 剩下的
           this.config.tile.data[cluster.column + 2][cluster.row + 1].type =
-            MATCH3_RGB_COLORS.length + 2; // 測試用
+            MATCH3_RGB_COLORS.length + 2;
         }
         console.log("L shape");
+        this.aiBot = false;
       } else {
         // 處理線性群集（水平或垂直）
         let colOffset = 0;
@@ -904,15 +928,16 @@ export default class Match3Core {
             rowOffset++;
           }
         }
-        // 4x1 || 1x4
+        // TODO: 4x1 || 1x4
         if (cluster.length === 4) {
           if (cluster.horizontal) {
             this.config.tile.data[cluster.column + 1][cluster.row].type =
-              MATCH3_RGB_COLORS.length + 3; // 測試用
+              MATCH3_RGB_COLORS.length + 3;
           } else {
             this.config.tile.data[cluster.column][cluster.row + 1].type =
-              MATCH3_RGB_COLORS.length + 4; // 測試用
+              MATCH3_RGB_COLORS.length + 4;
           }
+          this.aiBot = false;
         }
       }
     }
