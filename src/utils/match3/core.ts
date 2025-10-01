@@ -191,7 +191,7 @@ export default class Match3Core {
             }
             return false;
           });
-          if (activates.length) return;
+          if (activates.some((activated) => activated)) return;
         }
 
         let swapped = false;
@@ -1054,6 +1054,7 @@ export default class Match3Core {
       this.config.tile.data[column][row].type = -1;
     });
 
+    // 計算每個 tile 需要下降的距離（垂直動畫用）
     for (let i = 0; i < this.config.columns; i++) {
       let shift = 0;
       for (let j = this.config.rows - 1; j >= 0; j--) {
@@ -1062,6 +1063,16 @@ export default class Match3Core {
           this.config.tile.data[i][j].shift = 0;
         } else {
           this.config.tile.data[i][j].shift = shift;
+        }
+      }
+    }
+    // 檢查是否有垂直特殊消除（type === MATCH3_RGB_COLORS.length + 2），將整列 shift 設為最大
+    for (let i = 0; i < this.config.columns; i++) {
+      for (let j = 0; j < this.config.rows; j++) {
+        if (this.config.tile.data[i][j].type === MATCH3_RGB_COLORS.length + 2) {
+          for (let k = 0; k < this.config.rows; k++) {
+            this.config.tile.data[i][k].shift = this.config.rows - k;
+          }
         }
       }
     }
