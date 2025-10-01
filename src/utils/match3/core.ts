@@ -147,7 +147,12 @@ export default class Match3Core {
       for (let j = 0; j < this.config.rows; j++) {
         if (this.config.tile.data[i][j].type === MATCH3_RGB_COLORS.length + 2) {
           for (let k = 0; k < this.config.rows; k++) {
-            this.config.tile.data[i][k].shift = this.config.rows - k;
+            // 確保 shift 值不會讓目標位置超出邊界
+            const maxShift = this.config.rows - 1 - k;
+            this.config.tile.data[i][k].shift = Math.min(
+              this.config.rows - k,
+              maxShift
+            );
           }
         }
       }
@@ -927,9 +932,9 @@ export default class Match3Core {
     // check special clusters first
     for (let j = 0; j < this.config.rows; j++) {
       for (let i = 0; i < this.config.columns - 1; i++) {
-        if (this.config.tile.data[i][j].type > MATCH3_RGB_COLORS.length) {
+        if (this.config.tile.data[i][j].type >= MATCH3_RGB_COLORS.length) {
           const specialTileType = this.config.tile.data[i][j].type;
-          if (specialTileType >= MATCH3_RGB_COLORS.length + 1) {
+          if (specialTileType >= MATCH3_RGB_COLORS.length) {
             this.moves.push({ column1: i, row1: j, column2: i, row2: j });
           }
         }
@@ -1086,7 +1091,11 @@ export default class Match3Core {
         } else {
           const shift = this.config.tile.data[i][j].shift;
           if (shift > 0) {
-            this.swap(i, j, i, j + shift);
+            // 確保目標位置不會超出陣列邊界
+            const targetY = j + shift;
+            if (targetY < this.config.rows) {
+              this.swap(i, j, i, targetY);
+            }
           }
         }
         this.config.tile.data[i][j].shift = 0;
@@ -1121,6 +1130,25 @@ export default class Match3Core {
   }
 
   private swap(x1: number, y1: number, x2: number, y2: number): void {
+    // 檢查邊界，確保座標在有效範圍內
+    if (
+      x1 < 0 ||
+      x1 >= this.config.columns ||
+      y1 < 0 ||
+      y1 >= this.config.rows ||
+      x2 < 0 ||
+      x2 >= this.config.columns ||
+      y2 < 0 ||
+      y2 >= this.config.rows ||
+      !this.config.tile.data[x1] ||
+      !this.config.tile.data[x1][y1] ||
+      !this.config.tile.data[x2] ||
+      !this.config.tile.data[x2][y2]
+    ) {
+      console.warn(`Invalid swap coordinates: (${x1},${y1}) <-> (${x2},${y2})`);
+      return;
+    }
+
     const type = this.config.tile.data[x1][y1].type;
     this.config.tile.data[x1][y1].type = this.config.tile.data[x2][y2].type;
     this.config.tile.data[x2][y2].type = type;
