@@ -90,8 +90,22 @@ export default class Match3Core {
     });
   }
 
-  private explode3x3(tile: Tile & { col: number; row: number }) {
+  private explode3x3(
+    tile: Tile & { col: number; row: number },
+    chainReactionTiles: Set<string> = new Set()
+  ) {
     const { col, row } = tile;
+    const tileKey = `${col},${row}`;
+
+    // 防止無限循環
+    if (chainReactionTiles.has(tileKey)) {
+      return;
+    }
+    chainReactionTiles.add(tileKey);
+
+    // 收集被影響的特殊tiles
+    const affectedSpecialTiles: (Tile & { col: number; row: number })[] = [];
+
     this.config.tile.data[col][row].type = -1;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -104,29 +118,128 @@ export default class Match3Core {
           y < this.config.rows &&
           this.config.tile.data[x][y].type !== -1
         ) {
+          // 檢查是否為特殊tile
+          if (this.config.tile.data[x][y].type >= MATCH3_RGB_COLORS.length) {
+            affectedSpecialTiles.push({
+              ...this.config.tile.data[x][y],
+              col: x,
+              row: y,
+            });
+          }
           this.config.tile.data[x][y].type = -1;
         }
       }
     }
-    this.calcShiftAndDoAnimation();
+
+    // 觸發連鎖反應
+    this.triggerChainReaction(affectedSpecialTiles, chainReactionTiles);
+
+    // 只在初始調用時執行動畫
+    if (chainReactionTiles.size === 1) {
+      this.calcShiftAndDoAnimation();
+    }
   }
 
-  private explodeHorizontal(tile: Tile & { col: number; row: number }) {
+  private explodeHorizontal(
+    tile: Tile & { col: number; row: number },
+    chainReactionTiles: Set<string> = new Set()
+  ) {
     const { col, row } = tile;
+    const tileKey = `${col},${row}`;
+
+    // 防止無限循環
+    if (chainReactionTiles.has(tileKey)) {
+      return;
+    }
+    chainReactionTiles.add(tileKey);
+
+    // 收集被影響的特殊tiles
+    const affectedSpecialTiles: (Tile & { col: number; row: number })[] = [];
+
     this.config.tile.data[col][row].type = -1;
     for (let x = 0; x < this.config.columns; x++) {
-      this.config.tile.data[x][row].type = -1;
+      if (this.config.tile.data[x][row].type !== -1) {
+        // 檢查是否為特殊tile
+        if (this.config.tile.data[x][row].type >= MATCH3_RGB_COLORS.length) {
+          affectedSpecialTiles.push({
+            ...this.config.tile.data[x][row],
+            col: x,
+            row: row,
+          });
+        }
+        this.config.tile.data[x][row].type = -1;
+      }
     }
-    this.calcShiftAndDoAnimation();
+
+    // 觸發連鎖反應
+    this.triggerChainReaction(affectedSpecialTiles, chainReactionTiles);
+
+    // 只在初始調用時執行動畫
+    if (chainReactionTiles.size === 1) {
+      this.calcShiftAndDoAnimation();
+    }
   }
 
-  private explodeVertical(tile: Tile & { col: number; row: number }) {
+  private explodeVertical(
+    tile: Tile & { col: number; row: number },
+    chainReactionTiles: Set<string> = new Set()
+  ) {
     const { col, row } = tile;
+    const tileKey = `${col},${row}`;
+
+    // 防止無限循環
+    if (chainReactionTiles.has(tileKey)) {
+      return;
+    }
+    chainReactionTiles.add(tileKey);
+
+    // 收集被影響的特殊tiles
+    const affectedSpecialTiles: (Tile & { col: number; row: number })[] = [];
+
     this.config.tile.data[col][row].type = -1;
     for (let y = 0; y < this.config.rows; y++) {
-      this.config.tile.data[col][y].type = -1;
+      if (this.config.tile.data[col][y].type !== -1) {
+        // 檢查是否為特殊tile
+        if (this.config.tile.data[col][y].type >= MATCH3_RGB_COLORS.length) {
+          affectedSpecialTiles.push({
+            ...this.config.tile.data[col][y],
+            col: col,
+            row: y,
+          });
+        }
+        this.config.tile.data[col][y].type = -1;
+      }
     }
-    this.calcShiftAndDoAnimation();
+
+    // 觸發連鎖反應
+    this.triggerChainReaction(affectedSpecialTiles, chainReactionTiles);
+
+    // 只在初始調用時執行動畫
+    if (chainReactionTiles.size === 1) {
+      this.calcShiftAndDoAnimation();
+    }
+  }
+
+  private triggerChainReaction(
+    affectedSpecialTiles: (Tile & { col: number; row: number })[],
+    chainReactionTiles: Set<string>
+  ) {
+    // 遞迴觸發被影響的特殊tiles
+    for (const specialTile of affectedSpecialTiles) {
+      if (specialTile.type === MATCH3_RGB_COLORS.length) {
+        // 3x3 爆炸
+        this.explode3x3(specialTile, chainReactionTiles);
+        this.manager.activateSpecialTile(specialTile, "3x3");
+      } else if (specialTile.type === MATCH3_RGB_COLORS.length + 1) {
+        // 水平爆炸
+        this.explodeHorizontal(specialTile, chainReactionTiles);
+        this.manager.activateSpecialTile(specialTile, "horizontal");
+      } else if (specialTile.type === MATCH3_RGB_COLORS.length + 2) {
+        // 垂直爆炸
+        this.explodeVertical(specialTile, chainReactionTiles);
+        this.manager.activateSpecialTile(specialTile, "vertical");
+      }
+    }
   }
 
   private calcShiftAndDoAnimation() {
@@ -182,16 +295,8 @@ export default class Match3Core {
               tile.col === mt.x &&
               tile.row === mt.y
             ) {
-              if (tile.type === MATCH3_RGB_COLORS.length) {
-                this.explode3x3(tile);
-                this.manager.activateSpecialTile(tile, "3x3");
-              } else if (tile.type === MATCH3_RGB_COLORS.length + 1) {
-                this.explodeHorizontal(tile);
-                this.manager.activateSpecialTile(tile, "horizontal");
-              } else if (tile.type === MATCH3_RGB_COLORS.length + 2) {
-                this.explodeVertical(tile);
-                this.manager.activateSpecialTile(tile, "vertical");
-              }
+              // 使用新的激活方法支持連鎖反應
+              this.activateSingleSpecialTile(tile);
               return true;
             }
             return false;
@@ -1154,7 +1259,107 @@ export default class Match3Core {
     this.config.tile.data[x2][y2].type = type;
   }
 
+  private activateSpecialTilePair(
+    tile1: Tile & { col: number; row: number },
+    tile2: Tile & { col: number; row: number }
+  ) {
+    // 創建連鎖反應集合
+    const chainReactionTiles = new Set<string>();
+
+    // 同時激活兩個特殊 tile，但不立即執行動畫
+    if (tile1.type === MATCH3_RGB_COLORS.length) {
+      this.explode3x3(tile1, chainReactionTiles);
+      this.manager.activateSpecialTile(tile1, "3x3");
+    } else if (tile1.type === MATCH3_RGB_COLORS.length + 1) {
+      this.explodeHorizontal(tile1, chainReactionTiles);
+      this.manager.activateSpecialTile(tile1, "horizontal");
+    } else if (tile1.type === MATCH3_RGB_COLORS.length + 2) {
+      this.explodeVertical(tile1, chainReactionTiles);
+      this.manager.activateSpecialTile(tile1, "vertical");
+    }
+
+    if (tile2.type === MATCH3_RGB_COLORS.length) {
+      this.explode3x3(tile2, chainReactionTiles);
+      this.manager.activateSpecialTile(tile2, "3x3");
+    } else if (tile2.type === MATCH3_RGB_COLORS.length + 1) {
+      this.explodeHorizontal(tile2, chainReactionTiles);
+      this.manager.activateSpecialTile(tile2, "horizontal");
+    } else if (tile2.type === MATCH3_RGB_COLORS.length + 2) {
+      this.explodeVertical(tile2, chainReactionTiles);
+      this.manager.activateSpecialTile(tile2, "vertical");
+    }
+
+    // 執行掉落動畫
+    this.calcShiftAndDoAnimation();
+  }
+
+  private activateSingleSpecialTile(tile: Tile & { col: number; row: number }) {
+    // 創建連鎖反應集合
+    const chainReactionTiles = new Set<string>();
+
+    // 激活特殊 tile，包括連鎖反應
+    if (tile.type === MATCH3_RGB_COLORS.length) {
+      this.explode3x3(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "3x3");
+    } else if (tile.type === MATCH3_RGB_COLORS.length + 1) {
+      this.explodeHorizontal(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "horizontal");
+    } else if (tile.type === MATCH3_RGB_COLORS.length + 2) {
+      this.explodeVertical(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "vertical");
+    }
+
+    // 執行掉落動畫（只有在第一次調用時才執行）
+    this.calcShiftAndDoAnimation();
+  }
+
+  private activateSpecialTileWithChain(
+    tile: Tile & { col: number; row: number },
+    chainReactionTiles: Set<string>
+  ) {
+    if (tile.type === MATCH3_RGB_COLORS.length) {
+      // 3x3 爆炸
+      this.explode3x3(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "3x3");
+    } else if (tile.type === MATCH3_RGB_COLORS.length + 1) {
+      // 水平爆炸
+      this.explodeHorizontal(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "horizontal");
+    } else if (tile.type === MATCH3_RGB_COLORS.length + 2) {
+      // 垂直爆炸
+      this.explodeVertical(tile, chainReactionTiles);
+      this.manager.activateSpecialTile(tile, "vertical");
+    }
+  }
+
   private mouseSwap(c1: number, r1: number, c2: number, r2: number): void {
+    // 檢查是否兩個都是特殊 tile
+    const tile1Type = this.config.tile.data[c1][r1].type;
+    const tile2Type = this.config.tile.data[c2][r2].type;
+
+    const isSpecialTile1 = tile1Type >= MATCH3_RGB_COLORS.length;
+    const isSpecialTile2 = tile2Type >= MATCH3_RGB_COLORS.length;
+
+    if (isSpecialTile1 && isSpecialTile2) {
+      // 兩個特殊 tile 交換：激活兩個特殊 tile
+      this.activateSpecialTilePair(
+        { ...this.config.tile.data[c1][r1], col: c1, row: r1 },
+        { ...this.config.tile.data[c2][r2], col: c2, row: r2 }
+      );
+      this.config.selected.selected = false;
+      return;
+    } else if (isSpecialTile1 || isSpecialTile2) {
+      // 一個特殊 tile 和一個普通 tile 交換：激活特殊 tile
+      const specialTile = isSpecialTile1
+        ? { ...this.config.tile.data[c1][r1], col: c1, row: r1 }
+        : { ...this.config.tile.data[c2][r2], col: c2, row: r2 };
+
+      this.activateSingleSpecialTile(specialTile);
+      this.config.selected.selected = false;
+      return;
+    }
+
+    // 普通交換邏輯
     this.currentMove = { column1: c1, row1: r1, column2: c2, row2: r2 };
     this.config.selected.selected = false;
     this.state.animation.state = 2;
