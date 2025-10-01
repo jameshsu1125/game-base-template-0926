@@ -9,8 +9,7 @@ export const MATCH3_RGB_COLORS: [number, number, number][] = [
 ];
 
 export const MATCH3_SPECIAL_RGB_COLORS: [number, number, number][] = [
-  [0, 0, 0], // 2x2
-  [255, 102, 0], // L
+  [0, 0, 0], // 2x2 + L 爆炸 黑色
   [102, 0, 255], // horizontal line 紫色
   [0, 0, 255], // vertical line
 ];

@@ -108,7 +108,28 @@ export default class Match3Core {
         }
       }
     }
+    this.calcShiftAndDoAnimation();
+  }
 
+  private explodeHorizontal(tile: Tile & { col: number; row: number }) {
+    const { col, row } = tile;
+    this.config.tile.data[col][row].type = -1;
+    for (let x = 0; x < this.config.columns; x++) {
+      this.config.tile.data[x][row].type = -1;
+    }
+    this.calcShiftAndDoAnimation();
+  }
+
+  private explodeVertical(tile: Tile & { col: number; row: number }) {
+    const { col, row } = tile;
+    this.config.tile.data[col][row].type = -1;
+    for (let y = 0; y < this.config.rows; y++) {
+      this.config.tile.data[col][y].type = -1;
+    }
+    this.calcShiftAndDoAnimation();
+  }
+
+  private calcShiftAndDoAnimation() {
     // 計算每個 tile 需要下降的距離
     for (let i = 0; i < this.config.columns; i++) {
       let shift = 0;
@@ -146,7 +167,14 @@ export default class Match3Core {
               tile.row === mt.y
             ) {
               this.manager.activateSpecialTile(tile);
-              this.explode3x3(tile);
+
+              if (tile.type === MATCH3_RGB_COLORS.length) {
+                this.explode3x3(tile);
+              } else if (tile.type === MATCH3_RGB_COLORS.length + 1) {
+                this.explodeHorizontal(tile);
+              } else if (tile.type === MATCH3_RGB_COLORS.length + 2) {
+                this.explodeVertical(tile);
+              }
               return true;
             }
             return false;
@@ -951,7 +979,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 2, cluster);
           this.config.tile.data[cluster.column][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 1;
+            MATCH3_RGB_COLORS.length;
         } else if (cluster.shape === "L-right-down") {
           func(i, cluster.column, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row, cluster);
@@ -959,7 +987,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row + 1, cluster);
           func(i, cluster.column + 2, cluster.row + 1, cluster);
           this.config.tile.data[cluster.column + 2][cluster.row].type =
-            MATCH3_RGB_COLORS.length + 1;
+            MATCH3_RGB_COLORS.length;
         } else if (cluster.shape === "L-down-left") {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
@@ -967,7 +995,7 @@ export default class Match3Core {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column, cluster.row + 2, cluster);
           this.config.tile.data[cluster.column + 1][cluster.row + 2].type =
-            MATCH3_RGB_COLORS.length + 1;
+            MATCH3_RGB_COLORS.length;
         } else if (cluster.shape === "L-right-up") {
           func(i, cluster.column, cluster.row + 1, cluster);
           func(i, cluster.column + 1, cluster.row + 1, cluster);
@@ -975,7 +1003,7 @@ export default class Match3Core {
           func(i, cluster.column + 1, cluster.row, cluster);
           func(i, cluster.column + 2, cluster.row, cluster);
           this.config.tile.data[cluster.column + 2][cluster.row + 1].type =
-            MATCH3_RGB_COLORS.length + 1;
+            MATCH3_RGB_COLORS.length;
         }
         console.log("L shape");
         this.aiBot = false;
@@ -996,10 +1024,10 @@ export default class Match3Core {
         if (cluster.length === 4) {
           if (cluster.horizontal) {
             this.config.tile.data[cluster.column + 1][cluster.row].type =
-              MATCH3_RGB_COLORS.length + 2;
+              MATCH3_RGB_COLORS.length + 1;
           } else {
             this.config.tile.data[cluster.column][cluster.row + 1].type =
-              MATCH3_RGB_COLORS.length + 3;
+              MATCH3_RGB_COLORS.length + 2;
           }
           console.log("4 in a row");
           this.aiBot = false;
