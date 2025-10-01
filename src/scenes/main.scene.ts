@@ -41,7 +41,7 @@ export default class MainScene extends Phaser.Scene {
     const background = this.add.image(
       this.scale.width / 2,
       this.scale.height / 2,
-      "background"
+      "match3-bg"
     );
     background.setOrigin(0.5, 0.5);
 

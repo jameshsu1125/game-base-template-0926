@@ -255,21 +255,6 @@ export default class Match3Core {
         }
       }
     }
-    // 檢查是否有垂直特殊消除（type === MATCH3_RGB_COLORS.length + 2），將整列 shift 設為最大
-    for (let i = 0; i < this.config.columns; i++) {
-      for (let j = 0; j < this.config.rows; j++) {
-        if (this.config.tile.data[i][j].type === MATCH3_RGB_COLORS.length + 2) {
-          for (let k = 0; k < this.config.rows; k++) {
-            // 確保 shift 值不會讓目標位置超出邊界
-            const maxShift = this.config.rows - 1 - k;
-            this.config.tile.data[i][k].shift = Math.min(
-              this.config.rows - k,
-              maxShift
-            );
-          }
-        }
-      }
-    }
 
     // 設置遊戲狀態為解決中，並啟動掉落動畫
     this.state.status = GameState.RESOLVE;
@@ -827,6 +812,7 @@ export default class Match3Core {
     this.find2x2Clusters();
 
     this.findHorizontalClusters();
+
     this.findVerticalClusters();
   }
 
@@ -1135,24 +1121,23 @@ export default class Match3Core {
         let rowOffset = 0;
         for (let j = 0; j < cluster.length; j++) {
           func(i, cluster.column + colOffset, cluster.row + rowOffset, cluster);
-
           if (cluster.horizontal) {
             colOffset++;
           } else {
             rowOffset++;
           }
         }
-        if (cluster.length === 4) {
-          if (cluster.horizontal) {
-            this.config.tile.data[cluster.column + 1][cluster.row].type =
-              MATCH3_RGB_COLORS.length + 1;
-          } else {
-            this.config.tile.data[cluster.column][cluster.row + 1].type =
-              MATCH3_RGB_COLORS.length + 2;
-          }
-          console.log("4 in a row");
-          this.aiBot = false;
-        }
+        // if (cluster.length === 4) {
+        //   if (cluster.horizontal) {
+        //     this.config.tile.data[cluster.column + 1][cluster.row].type =
+        //       MATCH3_RGB_COLORS.length + 1;
+        //   } else {
+        //     this.config.tile.data[cluster.column][cluster.row + 1].type =
+        //       MATCH3_RGB_COLORS.length + 2;
+        //   }
+        //   console.log("4 in a row");
+        //   this.aiBot = false;
+        // }
       }
     }
   }
@@ -1311,25 +1296,6 @@ export default class Match3Core {
 
     // 執行掉落動畫（只有在第一次調用時才執行）
     this.calcShiftAndDoAnimation();
-  }
-
-  private activateSpecialTileWithChain(
-    tile: Tile & { col: number; row: number },
-    chainReactionTiles: Set<string>
-  ) {
-    if (tile.type === MATCH3_RGB_COLORS.length) {
-      // 3x3 爆炸
-      this.explode3x3(tile, chainReactionTiles);
-      this.manager.activateSpecialTile(tile, "3x3");
-    } else if (tile.type === MATCH3_RGB_COLORS.length + 1) {
-      // 水平爆炸
-      this.explodeHorizontal(tile, chainReactionTiles);
-      this.manager.activateSpecialTile(tile, "horizontal");
-    } else if (tile.type === MATCH3_RGB_COLORS.length + 2) {
-      // 垂直爆炸
-      this.explodeVertical(tile, chainReactionTiles);
-      this.manager.activateSpecialTile(tile, "vertical");
-    }
   }
 
   private mouseSwap(c1: number, r1: number, c2: number, r2: number): void {
