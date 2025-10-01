@@ -260,7 +260,12 @@ export default class Match3Core {
       for (let j = 0; j < this.config.rows; j++) {
         if (this.config.tile.data[i][j].type === MATCH3_RGB_COLORS.length + 2) {
           for (let k = 0; k < this.config.rows; k++) {
-            this.config.tile.data[i][k].shift = k;
+            // 確保 shift 值不會讓目標位置超出邊界
+            const maxShift = this.config.rows - 1 - k;
+            this.config.tile.data[i][k].shift = Math.min(
+              this.config.rows - k,
+              maxShift
+            );
           }
         }
       }
@@ -1137,7 +1142,6 @@ export default class Match3Core {
             rowOffset++;
           }
         }
-        // TODO: 4x1 || 1x4
         if (cluster.length === 4) {
           if (cluster.horizontal) {
             this.config.tile.data[cluster.column + 1][cluster.row].type =
@@ -1189,7 +1193,6 @@ export default class Match3Core {
         if (this.config.tile.data[i][j].type === -1) {
           const t = this.getRandomTile();
           this.config.tile.data[i][j].type = t;
-          console.log(i, j, t);
         } else {
           const shift = this.config.tile.data[i][j].shift;
           if (shift > 0) {
