@@ -853,12 +853,22 @@ export default class Match3Core {
 
         if (checkCluster) {
           if (matchLength >= 3) {
-            this.clusters.push({
+            const newCluster = {
               column: i,
               row: j + 1 - matchLength,
               length: matchLength,
               horizontal: false,
-            });
+            };
+            if (
+              !this.clusters.some(
+                (c) =>
+                  c.column === newCluster.column &&
+                  c.row === newCluster.row &&
+                  c.length === newCluster.length
+              )
+            ) {
+              this.clusters.push(newCluster);
+            }
           }
           matchLength = 1;
         }
@@ -889,12 +899,22 @@ export default class Match3Core {
 
         if (checkCluster) {
           if (matchLength >= 3) {
-            this.clusters.push({
+            const newCluster = {
               column: i + 1 - matchLength,
               row: j,
               length: matchLength,
               horizontal: true,
-            });
+            };
+            if (
+              !this.clusters.some(
+                (c) =>
+                  c.column === newCluster.column &&
+                  c.row === newCluster.row &&
+                  c.length === newCluster.length
+              )
+            ) {
+              this.clusters.push(newCluster);
+            }
           }
           matchLength = 1;
         }
@@ -1005,13 +1025,23 @@ export default class Match3Core {
           topLeft === bottomLeft &&
           topLeft === bottomRight
         ) {
-          this.clusters.push({
+          const newCluster = {
             column: i,
             row: j,
             length: 4, // 2x2 有 4 個方塊
             horizontal: true, // 對於 2x2，我們可以設為 true
             is2x2: true,
-          });
+          };
+          if (
+            !this.clusters.some(
+              (c) =>
+                c.column === newCluster.column &&
+                c.row === newCluster.row &&
+                c.length === newCluster.length
+            )
+          ) {
+            this.clusters.push(newCluster);
+          }
         }
       }
     }
